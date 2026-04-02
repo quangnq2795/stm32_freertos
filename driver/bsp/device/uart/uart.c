@@ -4,10 +4,32 @@
 #include "ringbuf.h"
 
 static uart_desc_t g_uarts[BSP_UART_COUNT] = BSP_UART_DESCS;
-
 static ringbuf_u8_t g_rx_rb[BSP_UART_COUNT];
 static uint8_t g_rx_storage[BSP_UART_COUNT][UART_RX_RING_SIZE];
 static uint8_t g_rx_tmp[BSP_UART_COUNT][UART_RX_IT_CHUNK];
+
+static uart_id_t uart_id_from_huart(const UART_HandleTypeDef *huart)
+{
+  for (uart_id_t i = 0U; i < BSP_UART_COUNT; ++i) {
+    if (huart == &g_uarts[i].huart) {
+      return i;
+    }
+  }
+  return (uart_id_t)BSP_UART_COUNT;
+}
+
+void uart_irq_handler(USART_TypeDef *instance)
+{
+  if (instance == NULL) {
+    return;
+  }
+  for (uart_id_t i = 0U; i < BSP_UART_COUNT; ++i) {
+    if (g_uarts[i].huart.Instance == instance) {
+      HAL_UART_IRQHandler(&g_uarts[i].huart);
+      return;
+    }
+  }
+}
 
 static void uart_gpio_init(const uart_desc_t *d)
 {
@@ -25,9 +47,10 @@ static void uart_gpio_init(const uart_desc_t *d)
   gpio.Alternate = d->tx_af;
   HAL_GPIO_Init(d->tx_port, &gpio);
 
-  // RX
+  /* RX: AF + pull-up (idle RX high on TTL/USB-UART). */
   gpio.Pin = d->rx_pin;
   gpio.Mode = GPIO_MODE_AF_PP;
+  gpio.Pull = GPIO_PULLUP;
   gpio.Alternate = d->rx_af;
   HAL_GPIO_Init(d->rx_port, &gpio);
 }
@@ -42,7 +65,15 @@ void uart_init(uart_id_t id)
 
   uart_gpio_init(d);
 
-  /* Initialize per-UART RX ring buffer. */
+  if (d->uart_clk_enable != NULL) {
+    d->uart_clk_enable();
+  }
+  if ((int32_t)d->irqn >= 0) {
+    /* Priority >= configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY (5) for FreeRTOS ISR API. */
+    HAL_NVIC_SetPriority(d->irqn, 6, 0);
+    HAL_NVIC_EnableIRQ(d->irqn);
+  }
+
   ringbuf_init(&g_rx_rb[id], g_rx_storage[id], UART_RX_RING_SIZE);
 
   g_uarts[id].huart.Instance = d->instance;
@@ -56,7 +87,6 @@ void uart_init(uart_id_t id)
 
   (void)HAL_UART_Init(&g_uarts[id].huart);
 
-  /* Start RX in interrupt mode using ReceiveToIdle. */
   (void)HAL_UARTEx_ReceiveToIdle_IT(&g_uarts[id].huart,
                                       g_rx_tmp[id],
                                       UART_RX_IT_CHUNK);
@@ -107,36 +137,47 @@ size_t uart_write(uart_id_t id, const uint8_t *buf, size_t len)
   return 0U;
 }
 
-/* Called from UART interrupt context when ReceiveToIdle sees new bytes. */
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
-  uart_id_t id = (uart_id_t)BSP_UART_COUNT; /* sentinel: invalid ID */
-  for (uart_id_t i = 0U; i < BSP_UART_COUNT; ++i) {
-    if (huart == &g_uarts[i].huart) {
-      id = i;
-      break;
-    }
-  }
+  uart_id_t id = uart_id_from_huart(huart);
   if (id >= BSP_UART_COUNT) {
     return;
   }
 
-  if (Size == 0) {
+  if (Size == 0U) {
     (void)HAL_UARTEx_ReceiveToIdle_IT(&g_uarts[id].huart,
                                         g_rx_tmp[id],
                                         UART_RX_IT_CHUNK);
     return;
   }
 
-  ringbuf_push_isr(&g_rx_rb[id], g_rx_tmp[id], Size);
+  (void)ringbuf_push_isr(&g_rx_rb[id], g_rx_tmp[id], Size);
 
-  if (g_uarts[id].evt_cb != 0) {
+  /* Re-arm RX before notifying task (same reason as byte-at-a-time path). */
+  (void)HAL_UARTEx_ReceiveToIdle_IT(&g_uarts[id].huart,
+                                      g_rx_tmp[id],
+                                      UART_RX_IT_CHUNK);
+
+  if (g_uarts[id].evt_cb != NULL) {
     g_uarts[id].evt_cb(id, UART_EVENT_RX);
   }
+}
 
-  /* Restart RX after each event. */
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+  uart_id_t id = uart_id_from_huart(huart);
+  if (id >= BSP_UART_COUNT) {
+    return;
+  }
+
+  if ((huart->ErrorCode & HAL_UART_ERROR_ORE) != 0U) {
+    __HAL_UART_CLEAR_OREFLAG(huart);
+  }
+  huart->ErrorCode = HAL_UART_ERROR_NONE;
+
   (void)HAL_UARTEx_ReceiveToIdle_IT(&g_uarts[id].huart,
                                       g_rx_tmp[id],
                                       UART_RX_IT_CHUNK);
 }
 
+BSP_UART_IRQ_HANDLERS

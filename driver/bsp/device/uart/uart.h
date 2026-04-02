@@ -5,7 +5,7 @@
 
 #include "stm32f2xx_hal.h"
 
-/* HAL RX chunk size for ReceiveToIdle_IT (driver internal temporary buffer). */
+/* HAL ReceiveToIdle_IT temporary buffer length (per UART). */
 #ifndef UART_RX_IT_CHUNK
 #define UART_RX_IT_CHUNK 64U
 #endif
@@ -45,6 +45,7 @@ typedef struct
 
   void (*gpio_clk_enable)(void);
   void (*uart_clk_enable)(void);
+  IRQn_Type irqn;
 
   /* Runtime fields (set/used by driver). */
   UART_HandleTypeDef huart;

@@ -2,7 +2,6 @@
 #include "task.h"
 #include "bsp.h"
 
-void task_blink_led_create(void);
 void task_cli_create(void);
 
 void vApplicationTickHook(void)
@@ -12,7 +11,6 @@ void vApplicationTickHook(void)
 
 void os_init(void)
 {
-  //task_blink_led_create();
   task_cli_create();
 }
 
