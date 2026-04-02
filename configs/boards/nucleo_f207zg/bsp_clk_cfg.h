@@ -87,10 +87,3 @@
  * configs/freertos/stm32f207zg/FreeRTOSConfig.h cho khớp (ở đây 120000000UL).
  */
 
-/*===========================================================================*/
-/* LED — NUCLEO-F207ZG LD2 = PB7                                              */
-/*===========================================================================*/
-
-#define BSP_LED_GPIO_PORT GPIOB
-#define BSP_LED_GPIO_PIN  GPIO_PIN_14
-#define BSP_LED_GPIO_CLK_ENABLE() __HAL_RCC_GPIOB_CLK_ENABLE()

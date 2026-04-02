@@ -1,5 +1,5 @@
 #include "bsp.h"
-#include "bsp_cfg.h"
+#include "bsp_clk_cfg.h"
 
 static void SystemClock_ApplyBusFromPll(void);
 #if BSP_CLOCK_PLL_SRC == BSP_CLOCK_PLL_SRC_HSE
@@ -71,7 +71,7 @@ static void SystemClock_Config_HSI(void)
 }
 #endif
 
-/** Chọn HSE hoặc HSI theo `BSP_CLOCK_PLL_SRC` trong `bsp_cfg.h`. */
+/** Chọn HSE hoặc HSI theo `BSP_CLOCK_PLL_SRC` trong `bsp_clk_cfg.h`. */
 static void SystemClock_Config(void)
 {
 #if BSP_CLOCK_PLL_SRC == BSP_CLOCK_PLL_SRC_HSI

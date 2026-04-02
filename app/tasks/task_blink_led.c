@@ -5,11 +5,11 @@
 static void task_blink_led(void *argument)
 {
   (void)argument;
-  led_init();
+  led_init(0);
 
   for (;;) {
-    led_toggle();
-    vTaskDelay(pdMS_TO_TICKS(500));
+    led_toggle(0);
+    vTaskDelay(pdMS_TO_TICKS(1000));
   }
 }
 

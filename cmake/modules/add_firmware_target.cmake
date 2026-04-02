@@ -16,6 +16,7 @@ function(add_firmware_target board_name)
     app/main.c
     app/tasks/os.c
     app/tasks/task_blink_led.c
+    common/lib/ringbuf.c
   )
 
   include(${CMAKE_SOURCE_DIR}/configs/boards/${board_name}/sources.cmake)
@@ -39,6 +40,7 @@ function(add_firmware_target board_name)
     ${CMAKE_SOURCE_DIR}/configs/boards/${board_name}
     ${CMAKE_SOURCE_DIR}/configs/hal/${MCU_NAME}
     ${CMAKE_SOURCE_DIR}/configs/freertos/${MCU_NAME}
+    ${CMAKE_SOURCE_DIR}/common/lib
   )
 
   target_compile_definitions(firmware.elf PRIVATE USE_HAL_DRIVER ${DEVICE_DEFINE})

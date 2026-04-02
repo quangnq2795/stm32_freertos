@@ -5,7 +5,7 @@ This tree is **STM32F2-only** (HAL `stm32f2xx`, typical Cortex-M3, FreeRTOS `ARM
 Layout:
 
 - `core/<mcu>/...` (startup, system, linker, **`firmware.cmake`**)
-- `configs/boards/<board>/...` (`bsp_cfg.h`, **`sources.cmake`**)
+- `configs/boards/<board>/...` (e.g. `bsp_clk_cfg.h` + component cfg headers, **`sources.cmake`**)
 - `driver/bsp/common/...`, `driver/bsp/device/<component>/<board>/...`
 - `driver/cmsis/device/st/stm32f2xx/include/` — device headers (**folder name `include`**)
 - `driver/hal/stm32f2xx/{inc,src}` — shared F2 HAL
@@ -81,7 +81,7 @@ Edit `stm32f2xx_hal_conf.h` and `FreeRTOSConfig.h` for clocks, heap, and priorit
 mkdir -p configs/boards/my_board driver/bsp/device/led/my_board
 ```
 
-Add `bsp_cfg.h` (pins + `stm32f2xx_hal.h`), `sources.cmake` (mirror `configs/boards/nucleo_f207zg/sources.cmake`), and `led.c` / `led.h` under `driver/bsp/device/led/my_board/`.
+Add `bsp_clk_cfg.h` (clock/PLL + `stm32f2xx_hal.h`), `bsp_led_cfg.h` / `bsp_uart_cfg.h` as needed, `sources.cmake` (mirror `configs/boards/nucleo_f207zg/sources.cmake`).
 
 ## 8) Build
 

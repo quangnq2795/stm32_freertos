@@ -9,7 +9,7 @@ Firmware build with **MCU** + **board** as two independent CMake options.
 | `core/<mcu>/` | Startup, system, linker, **`firmware.cmake`** (toolchain, `DEVICE_DEFINE`, FreeRTOS port name) |
 | `configs/hal/<mcu>/` | `stm32f2xx_hal_conf.h` |
 | `configs/freertos/<mcu>/` | `FreeRTOSConfig.h` |
-| `configs/boards/<board>/` | `bsp_cfg.h`, **`sources.cmake`** |
+| `configs/boards/<board>/` | `bsp_clk_cfg.h` (and component cfg headers), **`sources.cmake`** |
 | `driver/bsp/common/` | `bsp.c` / `bsp.h` |
 | `driver/bsp/device/<component>/<board>/` | e.g. LED driver |
 | `app/` | `main`, tasks |

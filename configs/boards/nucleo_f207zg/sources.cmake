@@ -2,10 +2,12 @@
 
 target_sources(firmware.elf PRIVATE
   ${CMAKE_SOURCE_DIR}/driver/bsp/common/bsp.c
-  ${CMAKE_SOURCE_DIR}/driver/bsp/device/led/${board_name}/led.c
+  ${CMAKE_SOURCE_DIR}/driver/bsp/device/led/led.c
+  ${CMAKE_SOURCE_DIR}/driver/bsp/device/uart/uart.c
 )
 
 target_include_directories(firmware.elf PRIVATE
   ${CMAKE_SOURCE_DIR}/driver/bsp/common
-  ${CMAKE_SOURCE_DIR}/driver/bsp/device/led/${board_name}
+  ${CMAKE_SOURCE_DIR}/driver/bsp/device/led
+  ${CMAKE_SOURCE_DIR}/driver/bsp/device/uart
 )
