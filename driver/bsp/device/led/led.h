@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include "stm32f2xx_hal.h"
-
+#include "bsp_led_cfg.h"
 /* LED identifier (numeric ID: 0..BSP_LED_COUNT-1) */
 typedef uint8_t led_id_t;
 

@@ -19,7 +19,7 @@
 #define BSP_LED3_BLINK_CYCLES 0U
 
 /* Helper macro: generate a small wrapper around LED clock-enable macros.
- * We generate functions because `led_desc_t` stores a function pointer.
+ * Wrappers are needed because LED driver stores a function pointer.
  *
  * Pass macro name without trailing `()` (e.g. BSP_LED2_GPIO_CLK_ENABLE).
  */

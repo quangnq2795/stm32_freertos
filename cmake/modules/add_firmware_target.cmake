@@ -16,6 +16,7 @@ function(add_firmware_target board_name)
     app/main.c
     app/tasks/os.c
     app/tasks/task_blink_led.c
+    app/tasks/cli/task_cli.c
     common/lib/ringbuf.c
   )
 
