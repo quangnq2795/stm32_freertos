@@ -15,7 +15,11 @@ function(add_firmware_target board_name)
   add_executable(firmware.elf
     app/main.c
     app/tasks/os.c
+    app/tasks/hmi/task_hmi.c
+    app/tasks/hmi/hmi_led.c
+    app/tasks/hmi/hmi_lcd.c
     app/tasks/cli/task_cli.c
+    app/tasks/cli/handlers/cli_cmd_lcd.c
     app/tasks/cli/handlers/cli_cmd_led.c
     app/tasks/cli/handlers/cli_cmd_sensor.c
     common/lib/ringbuf.c
@@ -40,6 +44,7 @@ function(add_firmware_target board_name)
     ${CMAKE_SOURCE_DIR}/app
     ${CMAKE_SOURCE_DIR}/app/tasks/cli
     ${CMAKE_SOURCE_DIR}/app/tasks/cli/handlers
+    ${CMAKE_SOURCE_DIR}/app/tasks/hmi
     ${CMAKE_SOURCE_DIR}/configs
     ${CMAKE_SOURCE_DIR}/configs/boards/${board_name}
     ${CMAKE_SOURCE_DIR}/configs/hal/${MCU_NAME}

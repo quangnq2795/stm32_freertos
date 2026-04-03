@@ -23,6 +23,7 @@ function(add_stm32cube_sources target)
     ${SYSTEM_FILE}
     ${CMAKE_SOURCE_DIR}/middlewares/freertos/list.c
     ${CMAKE_SOURCE_DIR}/middlewares/freertos/queue.c
+    ${CMAKE_SOURCE_DIR}/middlewares/freertos/timers.c
     ${CMAKE_SOURCE_DIR}/middlewares/freertos/tasks.c
     ${FREERTOS_PORT_DIR}/port.c
     ${CMAKE_SOURCE_DIR}/middlewares/freertos/portable/MemMang/heap_4.c

@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "cli_cmd.h"
+#include "cli_cmd_lcd.h"
 #include "cli_cmd_led.h"
 #include "cli_cmd_sensor.h"
 #include "task.cli.h"
@@ -21,7 +22,7 @@ static volatile uint8_t s_rx_overflow = 0U;
 
 static void cli_process_line(char *line, size_t line_len);
 
-static void cli_print(const char *s)
+void cli_print(const char *s)
 {
   if (s == NULL) {
     return;
@@ -39,6 +40,7 @@ static const cli_cmd_entry_t s_builtin_cmds[] = {
 static const cli_cmd_entry_t *const s_cmd_tables[] = {
     s_builtin_cmds,
     cli_led_cmds,
+    cli_lcd_cmds,
     cli_sensor_cmds,
 };
 
@@ -103,6 +105,7 @@ static void cmd_help(int argc, char **argv)
   cli_print("Commands:\r\n");
   cli_print("  help\r\n");
   cli_print("  led ...\r\n");
+  cli_print("  lcd ...\r\n");
   cli_print("  sensor ...\r\n");
 }
 

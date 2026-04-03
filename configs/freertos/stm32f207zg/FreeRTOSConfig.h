@@ -17,7 +17,10 @@
 #define configSUPPORT_STATIC_ALLOCATION         0
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
 #define configUSE_MUTEXES                       1
-#define configUSE_TIMERS                        0
+#define configUSE_TIMERS                        1
+#define configTIMER_TASK_PRIORITY               (configMAX_PRIORITIES - 1)
+#define configTIMER_QUEUE_LENGTH                16
+#define configTIMER_TASK_STACK_DEPTH            192
 #define configCHECK_FOR_STACK_OVERFLOW          0
 #define configUSE_MALLOC_FAILED_HOOK            0
 #define configQUEUE_REGISTRY_SIZE               0
