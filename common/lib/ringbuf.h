@@ -4,16 +4,13 @@
 #include <stdint.h>
 
 /*----------------------------------------------------------------------------
- * Simple SPSC byte ring buffer:
- * - Producer: runs in UART RX callback (ISR context)
- * - Consumer: runs in application task
+ * Simple SPSC byte ring buffer (one producer, one consumer):
+ * - This project uses it for UART RX/TX.
+ * - The "push_isr" and "push" APIs are provided for readability; in this
+ *   implementation they behave the same (no extra locking).
  *
- * Concurrency assumption:
- * - head is written only by producer, tail only by consumer.
- * - Only one producer and one consumer.
- *
- * Full condition: next(head) == tail (keeps one slot empty).
- * So max storable bytes = capacity - 1.
+ * head: producer only; tail: consumer only.
+ * Full: next(head) == tail → max stored = capacity - 1.
  *---------------------------------------------------------------------------*/
 
 typedef struct
@@ -30,6 +27,6 @@ uint16_t ringbuf_capacity(const ringbuf_u8_t *rb);
 uint16_t ringbuf_len(const ringbuf_u8_t *rb);
 uint16_t ringbuf_space(const ringbuf_u8_t *rb);
 
-size_t ringbuf_push_isr(ringbuf_u8_t *rb, const uint8_t *data, size_t len);
+size_t ringbuf_push(ringbuf_u8_t *rb, const uint8_t *data, size_t len);
 size_t ringbuf_pop(ringbuf_u8_t *rb, uint8_t *out, size_t len);
 

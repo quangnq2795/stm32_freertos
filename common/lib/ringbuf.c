@@ -51,7 +51,7 @@ uint16_t ringbuf_space(const ringbuf_u8_t *rb)
   return (uint16_t)((rb->capacity - 1U) - len);
 }
 
-size_t ringbuf_push_isr(ringbuf_u8_t *rb, const uint8_t *data, size_t len)
+size_t ringbuf_push(ringbuf_u8_t *rb, const uint8_t *data, size_t len)
 {
   if (rb == 0 || data == 0 || len == 0) {
     return 0;
@@ -61,13 +61,13 @@ size_t ringbuf_push_isr(ringbuf_u8_t *rb, const uint8_t *data, size_t len)
   while (pushed < len) {
     uint16_t next = ringbuf_next_index(rb, rb->head);
     if (next == rb->tail) {
-      /* Full */
-      break;
+      break; /* Full */
     }
     rb->storage[rb->head] = data[pushed];
     rb->head = next;
     ++pushed;
   }
+
   return pushed;
 }
 

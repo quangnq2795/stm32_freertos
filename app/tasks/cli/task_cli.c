@@ -17,6 +17,7 @@
 #define CLI_TASK_PRIO (tskIDLE_PRIORITY + 1U)
 
 static TaskHandle_t s_cliTask = NULL;
+static volatile uint8_t s_rx_overflow = 0U;
 
 static void cli_process_line(char *line, size_t line_len);
 
@@ -44,14 +45,17 @@ static const cli_cmd_entry_t *const s_cmd_tables[] = {
 static void cli_uart_evt_cb(uart_id_t id, uart_event_t evt)
 {
   (void)id;
-  if (evt != UART_EVENT_RX) {
-    return;
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+  if (evt == UART_EVENT_RX_OVERFLOW) {
+    s_rx_overflow = 1U;
   }
 
-  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-  if (s_cliTask != NULL) {
-    vTaskNotifyGiveFromISR(s_cliTask, &xHigherPriorityTaskWoken);
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+  if ((evt == UART_EVENT_RX_AVAILABLE) || (evt == UART_EVENT_RX_OVERFLOW)) {
+    if (s_cliTask != NULL) {
+      vTaskNotifyGiveFromISR(s_cliTask, &xHigherPriorityTaskWoken);
+      portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
   }
 }
 
@@ -73,7 +77,6 @@ static void task_cli(void *argument)
     while (uart_rx_available(CLI_UART_ID) > 0U) {
       uint8_t buf[32];
       size_t n = uart_read(CLI_UART_ID, buf, sizeof(buf));
-      (void)uart_write(CLI_UART_ID, buf, n);
       for (size_t i = 0; i < n; ++i) {
         uint8_t c = buf[i];
         if (c == '\r' || c == '\n') {

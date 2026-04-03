@@ -8,6 +8,10 @@ static ringbuf_u8_t g_rx_rb[BSP_UART_COUNT];
 static uint8_t g_rx_storage[BSP_UART_COUNT][UART_RX_RING_SIZE];
 static uint8_t g_rx_tmp[BSP_UART_COUNT][UART_RX_IT_CHUNK];
 
+static ringbuf_u8_t g_tx_rb[BSP_UART_COUNT];
+static uint8_t g_tx_storage[BSP_UART_COUNT][UART_TX_RING_SIZE];
+static uint8_t g_tx_chunk[BSP_UART_COUNT][UART_TX_CHUNK];
+
 static uart_id_t uart_id_from_huart(const UART_HandleTypeDef *huart)
 {
   for (uart_id_t i = 0U; i < BSP_UART_COUNT; ++i) {
@@ -18,17 +22,37 @@ static uart_id_t uart_id_from_huart(const UART_HandleTypeDef *huart)
   return (uart_id_t)BSP_UART_COUNT;
 }
 
-void uart_irq_handler(USART_TypeDef *instance)
+static void uart_tx_try_start(uart_id_t id)
 {
-  if (instance == NULL) {
+  if (id >= BSP_UART_COUNT) {
     return;
   }
-  for (uart_id_t i = 0U; i < BSP_UART_COUNT; ++i) {
-    if (g_uarts[i].huart.Instance == instance) {
-      HAL_UART_IRQHandler(&g_uarts[i].huart);
-      return;
-    }
+
+  UART_HandleTypeDef *const hu = &g_uarts[id].huart;
+  if (hu->gState != HAL_UART_STATE_READY) {
+    return;
   }
+  if (ringbuf_len(&g_tx_rb[id]) == 0U) {
+    return;
+  }
+
+  size_t n = ringbuf_pop(&g_tx_rb[id], g_tx_chunk[id], UART_TX_CHUNK);
+  if (n == 0U) {
+    return;
+  }
+
+  (void)HAL_UART_Transmit_IT(hu, g_tx_chunk[id], (uint16_t)n);
+}
+
+static void uart_rx_try_start(uart_id_t id)
+{
+  if (id >= BSP_UART_COUNT) {
+    return;
+  }
+
+  (void)HAL_UARTEx_ReceiveToIdle_IT(&g_uarts[id].huart,
+                                      g_rx_tmp[id],
+                                      UART_RX_IT_CHUNK);
 }
 
 static void uart_gpio_init(const uart_desc_t *d)
@@ -55,6 +79,19 @@ static void uart_gpio_init(const uart_desc_t *d)
   HAL_GPIO_Init(d->rx_port, &gpio);
 }
 
+void uart_irq_handler(USART_TypeDef *instance)
+{
+  if (instance == NULL) {
+    return;
+  }
+  for (uart_id_t i = 0U; i < BSP_UART_COUNT; ++i) {
+    if (g_uarts[i].huart.Instance == instance) {
+      HAL_UART_IRQHandler(&g_uarts[i].huart);
+      return;
+    }
+  }
+}
+
 void uart_init(uart_id_t id)
 {
   if (id >= BSP_UART_COUNT) {
@@ -75,6 +112,7 @@ void uart_init(uart_id_t id)
   }
 
   ringbuf_init(&g_rx_rb[id], g_rx_storage[id], UART_RX_RING_SIZE);
+  ringbuf_init(&g_tx_rb[id], g_tx_storage[id], UART_TX_RING_SIZE);
 
   g_uarts[id].huart.Instance = d->instance;
   g_uarts[id].huart.Init.BaudRate = d->baudrate;
@@ -87,9 +125,7 @@ void uart_init(uart_id_t id)
 
   (void)HAL_UART_Init(&g_uarts[id].huart);
 
-  (void)HAL_UARTEx_ReceiveToIdle_IT(&g_uarts[id].huart,
-                                      g_rx_tmp[id],
-                                      UART_RX_IT_CHUNK);
+  uart_rx_try_start(id);
 }
 
 void uart_register_event_callback(uart_id_t id, uart_event_callback_t cb)
@@ -115,26 +151,52 @@ size_t uart_read(uart_id_t id, uint8_t *out, size_t max_len)
     return 0U;
   }
 
-  uint32_t primask = __get_PRIMASK();
-  __disable_irq();
+  IRQn_Type const irqn = g_uarts[id].irqn;
+  if ((int32_t)irqn >= 0) {
+    NVIC_DisableIRQ(irqn);
+  }
+
   size_t n = ringbuf_pop(&g_rx_rb[id], out, max_len);
-  if (!primask) {
-    __enable_irq();
+
+  if ((int32_t)irqn >= 0) {
+    NVIC_EnableIRQ(irqn);
   }
   return n;
 }
 
 size_t uart_write(uart_id_t id, const uint8_t *buf, size_t len)
 {
-  if (id >= BSP_UART_COUNT) {
+  if (id >= BSP_UART_COUNT || buf == NULL || len == 0U) {
     return 0U;
   }
-  HAL_StatusTypeDef st =
-      HAL_UART_Transmit(&g_uarts[id].huart, (uint8_t *)buf, (uint16_t)len, 100);
-  if (st == HAL_OK) {
-    return len;
+
+  IRQn_Type const irqn = g_uarts[id].irqn;
+  if ((int32_t)irqn >= 0) {
+    NVIC_DisableIRQ(irqn);
   }
-  return 0U;
+  size_t pushed = ringbuf_push(&g_tx_rb[id], buf, len);
+  uart_tx_try_start(id);
+
+  if ((int32_t)irqn >= 0) {
+    NVIC_EnableIRQ(irqn);
+  }
+  return pushed;
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+  uart_id_t id = uart_id_from_huart(huart);
+  if (id >= BSP_UART_COUNT) {
+    return;
+  }
+
+  uart_tx_try_start(id);
+
+  /* If nothing left in TX ring after completing last chunk, notify. */
+  if (g_uarts[id].evt_cb != NULL && ringbuf_len(&g_tx_rb[id]) == 0U
+      && huart->gState == HAL_UART_STATE_READY) {
+    g_uarts[id].evt_cb(id, UART_EVENT_TX_EMPTY);
+  }
 }
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
@@ -145,21 +207,22 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
   }
 
   if (Size == 0U) {
-    (void)HAL_UARTEx_ReceiveToIdle_IT(&g_uarts[id].huart,
-                                        g_rx_tmp[id],
-                                        UART_RX_IT_CHUNK);
+    uart_rx_try_start(id);
     return;
   }
 
-  (void)ringbuf_push_isr(&g_rx_rb[id], g_rx_tmp[id], Size);
+  size_t const pushed = ringbuf_push(&g_rx_rb[id], g_rx_tmp[id], Size);
 
   /* Re-arm RX before notifying task (same reason as byte-at-a-time path). */
-  (void)HAL_UARTEx_ReceiveToIdle_IT(&g_uarts[id].huart,
-                                      g_rx_tmp[id],
-                                      UART_RX_IT_CHUNK);
+  uart_rx_try_start(id);
 
   if (g_uarts[id].evt_cb != NULL) {
-    g_uarts[id].evt_cb(id, UART_EVENT_RX);
+    if (pushed > 0U) {
+      g_uarts[id].evt_cb(id, UART_EVENT_RX_AVAILABLE);
+    }
+    if (pushed < Size) {
+      g_uarts[id].evt_cb(id, UART_EVENT_RX_OVERFLOW);
+    }
   }
 }
 
@@ -175,9 +238,9 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
   }
   huart->ErrorCode = HAL_UART_ERROR_NONE;
 
-  (void)HAL_UARTEx_ReceiveToIdle_IT(&g_uarts[id].huart,
-                                      g_rx_tmp[id],
-                                      UART_RX_IT_CHUNK);
+  uart_rx_try_start(id);
+
+  uart_tx_try_start(id);
 }
 
 BSP_UART_IRQ_HANDLERS
