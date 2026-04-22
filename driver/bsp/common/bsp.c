@@ -86,16 +86,9 @@ void bsp_init(void)
 {
   HAL_Init();
   SystemClock_Config();
-  SystemCoreClockUpdate();
 }
 
-void sync_systick(void)
+void bsp_sync_systick(void)
 {
   HAL_IncTick();
-}
-
-/* Weak: nếu không link uart.c, vector vẫn resolve (no-op). uart.c cung cấp bản mạnh. */
-__attribute__((weak)) void uart_bsp_irq_handler(USART_TypeDef *instance)
-{
-  (void)instance;
 }

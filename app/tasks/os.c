@@ -7,7 +7,7 @@ void task_cli_create(void);
 
 void vApplicationTickHook(void)
 {
-  sync_systick();
+  bsp_sync_systick();
 }
 
 void os_init(void)
