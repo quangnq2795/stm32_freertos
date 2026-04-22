@@ -3,11 +3,11 @@
 
 #include "stm32f2xx_hal.h"
 
-static led_desc_t g_leds[BSP_LED_COUNT] = BSP_LED_DESCS;
+static led_desc_t g_leds[LED_COUNT] = BSP_LED_DESCS;
 
 void led_init(led_id_t id)
 {
-  if (id >= BSP_LED_COUNT) {
+  if (id >= LED_COUNT) {
     return;
   }
 
@@ -33,7 +33,7 @@ void led_init(led_id_t id)
 
 void led_on(led_id_t id)
 {
-  if (id >= BSP_LED_COUNT) {
+  if (id >= LED_COUNT) {
     return;
   }
 
@@ -44,7 +44,7 @@ void led_on(led_id_t id)
 
 void led_off(led_id_t id)
 {
-  if (id >= BSP_LED_COUNT) {
+  if (id >= LED_COUNT) {
     return;
   }
 
@@ -55,7 +55,7 @@ void led_off(led_id_t id)
 
 void led_toggle(led_id_t id)
 {
-  if (id >= BSP_LED_COUNT) {
+  if (id >= LED_COUNT) {
     return;
   }
 

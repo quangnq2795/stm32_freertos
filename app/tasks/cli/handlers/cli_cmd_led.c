@@ -1,6 +1,6 @@
 #include "cli_cmd_led.h"
 
-#include "bsp_led_cfg.h"
+#include "led.h"
 #include "hmi_msg.h"
 #include "task.cli.h"
 #include "task_hmi.h"
@@ -19,7 +19,7 @@ static bool led_parse_index(const char *s, uint8_t *out_id)
     return false;
   }
   /* CLI: led 1 = BSP index 0 */
-  if (v < 1UL || v > (unsigned long)BSP_LED_COUNT) {
+  if (v < 1UL || v > (unsigned long)LED_COUNT) {
     return false;
   }
   *out_id = (uint8_t)(v - 1UL);
