@@ -19,7 +19,6 @@ typedef struct
   GPIO_TypeDef *port;
   uint16_t pin;
   led_state_t state;
-  uint32_t blink_cycles;
   void (*clk_enable)(void);
 } led_desc_t;
  

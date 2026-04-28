@@ -23,7 +23,7 @@ void led_init(led_id_t id)
 
   HAL_GPIO_Init(g_leds[id].port, &gpio);
 
-  /* Apply initial state to GPIO (BLINK starts from OFF level). */
+  /* Apply initial state to GPIO. */
   if (g_leds[id].state == led_state_on) {
     HAL_GPIO_WritePin(g_leds[id].port, g_leds[id].pin, GPIO_PIN_SET);
   } else {
@@ -38,7 +38,6 @@ void led_on(led_id_t id)
   }
 
   g_leds[id].state = led_state_on;
-  g_leds[id].blink_cycles = 0U;
   HAL_GPIO_WritePin(g_leds[id].port, g_leds[id].pin, GPIO_PIN_SET);
 }
 
@@ -49,7 +48,6 @@ void led_off(led_id_t id)
   }
 
   g_leds[id].state = led_state_off;
-  g_leds[id].blink_cycles = 0U;
   HAL_GPIO_WritePin(g_leds[id].port, g_leds[id].pin, GPIO_PIN_RESET);
 }
 
