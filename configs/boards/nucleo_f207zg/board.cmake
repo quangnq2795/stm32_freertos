@@ -7,6 +7,7 @@ set(CORE_TYPE cortex-m3)
 
 set(BOARD_SOURCES
   ${CMAKE_SOURCE_DIR}/driver/driver.c
+  ${CMAKE_SOURCE_DIR}/driver/hal_override.c
   ${CMAKE_SOURCE_DIR}/driver/platform/clk/clk.c
   ${CMAKE_SOURCE_DIR}/driver/platform/uart/uart.c
   ${CMAKE_SOURCE_DIR}/driver/boards/led/led.c

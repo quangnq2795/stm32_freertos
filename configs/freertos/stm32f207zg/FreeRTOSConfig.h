@@ -34,6 +34,7 @@
 #define INCLUDE_vTaskDelay                      1
 #define INCLUDE_vTaskSuspend                    1
 #define INCLUDE_xTaskGetSchedulerState          1
+#define INCLUDE_xTaskGetTickCount               1
 
 #define vPortSVCHandler                         SVC_Handler
 #define xPortPendSVHandler                      PendSV_Handler
