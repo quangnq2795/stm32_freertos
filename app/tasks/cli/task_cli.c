@@ -8,6 +8,7 @@
 #include "cli_cmd_led.h"
 #include "cli_cmd_sensor.h"
 #include "task.cli.h"
+#include "taskmanager.h"
 #include "uart.h"
 
 #ifndef CLI_UART_ID
@@ -17,7 +18,6 @@
 #define CLI_TASK_STACK_WORDS 512U
 #define CLI_TASK_PRIO (tskIDLE_PRIORITY + 1U)
 
-static TaskHandle_t s_cliTask = NULL;
 static volatile uint8_t s_rx_overflow = 0U;
 
 static void cli_process_line(char *line, size_t line_len);
@@ -46,6 +46,7 @@ static const cli_cmd_entry_t *const s_cmd_tables[] = {
 
 static void cli_uart_evt_cb(uart_id_t id, uart_event_t evt)
 {
+  TaskHandle_t cli_task;
   (void)id;
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
@@ -54,8 +55,9 @@ static void cli_uart_evt_cb(uart_id_t id, uart_event_t evt)
   }
 
   if ((evt == UART_EVENT_RX_AVAILABLE) || (evt == UART_EVENT_RX_OVERFLOW)) {
-    if (s_cliTask != NULL) {
-      vTaskNotifyGiveFromISR(s_cliTask, &xHigherPriorityTaskWoken);
+    cli_task = tm_handle(SYS_NODE_CLI);
+    if (cli_task != NULL) {
+      vTaskNotifyGiveFromISR(cli_task, &xHigherPriorityTaskWoken);
       portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     }
   }
@@ -64,8 +66,6 @@ static void cli_uart_evt_cb(uart_id_t id, uart_event_t evt)
 static void task_cli(void *argument)
 {
   (void)argument;
-
-  s_cliTask = xTaskGetCurrentTaskHandle();
 
   uart_init(CLI_UART_ID);
   uart_register_event_callback(CLI_UART_ID, cli_uart_evt_cb);
@@ -153,5 +153,18 @@ static void cli_process_line(char *line, size_t line_len)
 
 void task_cli_create(void)
 {
-  (void)xTaskCreate(task_cli, "cli", CLI_TASK_STACK_WORDS, NULL, CLI_TASK_PRIO, NULL);
+  static uint8_t s_started;
+  const tm_task_cfg_t cfg = {
+      .id = SYS_NODE_CLI,
+      .name = "cli",
+      .entry = task_cli,
+      .stack_words = CLI_TASK_STACK_WORDS,
+      .priority = CLI_TASK_PRIO,
+  };
+
+  if (s_started != 0U) {
+    return;
+  }
+  s_started = 1U;
+  (void)tm_init(&cfg);
 }

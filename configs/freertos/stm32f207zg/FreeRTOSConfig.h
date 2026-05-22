@@ -24,6 +24,7 @@
 #define configCHECK_FOR_STACK_OVERFLOW          0
 #define configUSE_MALLOC_FAILED_HOOK            0
 #define configQUEUE_REGISTRY_SIZE               0
+#define configUSE_QUEUE_SETS                    1
 
 #define configPRIO_BITS                         4
 #define configLIBRARY_LOWEST_INTERRUPT_PRIORITY 15

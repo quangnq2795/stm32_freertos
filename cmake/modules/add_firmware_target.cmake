@@ -12,6 +12,7 @@ set(FIRMWARE_APP_SOURCES
   app/tasks/cli/handlers/cli_cmd_lcd.c
   app/tasks/cli/handlers/cli_cmd_led.c
   app/tasks/cli/handlers/cli_cmd_sensor.c
+  app/services/taskmanager/taskmanager.c
   common/lib/ringbuf.c
 )
 
@@ -80,6 +81,8 @@ function(_firmware_apply_app_includes target board_name)
     ${CMAKE_SOURCE_DIR}/app/tasks/cli
     ${CMAKE_SOURCE_DIR}/app/tasks/cli/handlers
     ${CMAKE_SOURCE_DIR}/app/tasks/hmi
+    ${CMAKE_SOURCE_DIR}/app/services
+    ${CMAKE_SOURCE_DIR}/app/services/taskmanager
     ${CMAKE_SOURCE_DIR}/configs
     ${CMAKE_SOURCE_DIR}/configs/boards/${board_name}
     ${CMAKE_SOURCE_DIR}/configs/hal/${MCU_NAME}
