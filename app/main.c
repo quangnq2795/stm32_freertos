@@ -1,11 +1,11 @@
-#include "bsp.h"
+#include "driver.h"
 
 void os_init(void);
 void os_start(void);
 
 int main(void)
 {
-  bsp_init();
+  driver_init();
   os_init();
   os_start();
   while (1) {}

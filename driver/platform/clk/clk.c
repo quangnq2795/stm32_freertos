@@ -1,6 +1,5 @@
 #include "clk.h"
-
-#include "bsp_clk_cfg.h"
+#include "boards_clk_cfg.h"
 
 static void SystemClock_ApplyBusFromPll(void);
 #if BSP_CLOCK_PLL_SRC == BSP_CLOCK_PLL_SRC_HSE

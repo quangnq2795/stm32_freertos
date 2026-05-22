@@ -1,7 +1,5 @@
 #include "FreeRTOS.h"
 #include "task.h"
-#include "bsp.h"
-
 void task_hmi_create(void);
 void task_cli_create(void);
 

@@ -11,9 +11,10 @@ Firmware build is selected by **BOARD**; each board has a `board.cmake` with MCU
 | `configs/boards/<board>/board.cmake` | `MCU_NAME`, `FAMILY_NAME`, `DEVICE_DEFINE`, `CORE_TYPE`, `BOARD_SOURCES`, `BOARD_INCLUDE_DIRS` |
 | `configs/hal/<mcu>/` | `stm32f2xx_hal_conf.h` |
 | `configs/freertos/<mcu>/` | `FreeRTOSConfig.h` |
-| `configs/boards/<board>/` | **`board.cmake`**, `bsp_*_cfg.h` |
-| `driver/bsp/common/` | `bsp.c` / `bsp.h` |
-| `driver/bsp/device/<component>/<board>/` | e.g. LED driver |
+| `configs/boards/<board>/` | **`board.cmake`** (sources), **`boards_cfg.h`** (`CLK/UART/LED_ENABLED` for `#if` in C), `boards_*_cfg.h` |
+| `driver/platform/` | MCU-facing drivers (clk, uart, …) |
+| `driver/boards/` | Board wiring (led, …) |
+| `driver/driver.c` | `driver_init()` — HAL; calls clk only if `CLK_ENABLED` in `boards_cfg.h` |
 | `app/` | `main`, tasks |
 | `driver/hal`, `middlewares/freertos` | STM32F2 HAL + FreeRTOS kernel + port |
 
