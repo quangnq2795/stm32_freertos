@@ -1,46 +1,81 @@
-include(${CMAKE_SOURCE_DIR}/core/${MCU_NAME}/firmware.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/modules/add_stm32cube_sources.cmake)
 
-function(add_firmware_target board_name)
-  if(NOT DEFINED DEVICE_DEFINE)
-    message(FATAL_ERROR "DEVICE_DEFINE is not set in core/${MCU_NAME}/firmware.cmake")
+set(FIRMWARE_TARGET firmware.elf)
+
+set(FIRMWARE_APP_SOURCES
+  app/main.c
+  app/tasks/os.c
+  app/tasks/hmi/task_hmi.c
+  app/tasks/hmi/hmi_led.c
+  app/tasks/hmi/hmi_lcd.c
+  app/tasks/cli/task_cli.c
+  app/tasks/cli/handlers/cli_cmd_lcd.c
+  app/tasks/cli/handlers/cli_cmd_led.c
+  app/tasks/cli/handlers/cli_cmd_sensor.c
+  common/lib/ringbuf.c
+)
+
+# Macros: include board/mcu cmake in caller scope (sets MCU_NAME, MCU_FLAGS, ...).
+macro(_firmware_configure_board board_name)
+  set(_board_cmake "${CMAKE_SOURCE_DIR}/configs/boards/${board_name}/board.cmake")
+  if(NOT EXISTS "${_board_cmake}")
+    message(FATAL_ERROR "Board definition not found: ${_board_cmake}")
   endif()
-  if(NOT DEFINED FAMILY_NAME)
-    message(FATAL_ERROR "FAMILY_NAME is not set in core/${MCU_NAME}/firmware.cmake")
-  endif()
-  if(NOT DEFINED MCU_NAME)
-    message(FATAL_ERROR "MCU_NAME is not set before including firmware.cmake")
+  include("${_board_cmake}")
+
+  foreach(_var IN ITEMS MCU_NAME FAMILY_NAME DEVICE_DEFINE CORE_TYPE)
+    if(NOT DEFINED ${_var})
+      message(FATAL_ERROR "${_var} is not set in ${_board_cmake}")
+    endif()
+  endforeach()
+
+  if(CORE_TYPE STREQUAL "cortex-m0")
+    set(MCU_FLAGS -mcpu=cortex-m0 -mthumb)
+    set(FREERTOS_PORT ARM_CM0)
+  elseif(CORE_TYPE STREQUAL "cortex-m0plus")
+    set(MCU_FLAGS -mcpu=cortex-m0plus -mthumb)
+    set(FREERTOS_PORT ARM_CM0)
+  elseif(CORE_TYPE STREQUAL "cortex-m3")
+    set(MCU_FLAGS -mcpu=cortex-m3 -mthumb)
+    set(FREERTOS_PORT ARM_CM3)
+  elseif(CORE_TYPE STREQUAL "cortex-m4")
+    set(MCU_FLAGS -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard)
+    set(FREERTOS_PORT ARM_CM4F)
+  elseif(CORE_TYPE STREQUAL "cortex-m7")
+    set(MCU_FLAGS -mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard)
+    set(FREERTOS_PORT ARM_CM7)
+  else()
+    message(FATAL_ERROR "Unknown CORE_TYPE '${CORE_TYPE}' in ${_board_cmake}")
   endif()
 
-  add_executable(firmware.elf
-    app/main.c
-    app/tasks/os.c
-    app/tasks/hmi/task_hmi.c
-    app/tasks/hmi/hmi_led.c
-    app/tasks/hmi/hmi_lcd.c
-    app/tasks/cli/task_cli.c
-    app/tasks/cli/handlers/cli_cmd_lcd.c
-    app/tasks/cli/handlers/cli_cmd_led.c
-    app/tasks/cli/handlers/cli_cmd_sensor.c
-    common/lib/ringbuf.c
-  )
+  include(${CMAKE_SOURCE_DIR}/core/mcu/${MCU_NAME}/firmware.cmake)
+endmacro()
 
-  include(${CMAKE_SOURCE_DIR}/configs/boards/${board_name}/sources.cmake)
+function(_firmware_apply_board target)
+  if(BOARD_SOURCES)
+    target_sources(${target} PRIVATE ${BOARD_SOURCES})
+  endif()
+  if(BOARD_INCLUDE_DIRS)
+    target_include_directories(${target} PRIVATE ${BOARD_INCLUDE_DIRS})
+  endif()
+endfunction()
 
-  target_compile_options(firmware.elf PRIVATE
+function(_firmware_apply_toolchain target)
+  target_compile_options(${target} PRIVATE
     ${MCU_FLAGS}
     -ffunction-sections -fdata-sections -Wall -Wextra
   )
-
-  target_link_options(firmware.elf PRIVATE
+  target_link_options(${target} PRIVATE
     ${MCU_FLAGS}
     -T${LINKER_SCRIPT}
     -Wl,--gc-sections
     -Wl,-Map=${CMAKE_BINARY_DIR}/firmware.map
     --specs=nano.specs
   )
+endfunction()
 
-  target_include_directories(firmware.elf PRIVATE
+function(_firmware_apply_app_includes target board_name)
+  target_include_directories(${target} PRIVATE
     ${CMAKE_SOURCE_DIR}/app
     ${CMAKE_SOURCE_DIR}/app/tasks/cli
     ${CMAKE_SOURCE_DIR}/app/tasks/cli/handlers
@@ -51,14 +86,27 @@ function(add_firmware_target board_name)
     ${CMAKE_SOURCE_DIR}/configs/freertos/${MCU_NAME}
     ${CMAKE_SOURCE_DIR}/common/lib
   )
+endfunction()
 
-  target_compile_definitions(firmware.elf PRIVATE USE_HAL_DRIVER ${DEVICE_DEFINE})
-
-  add_stm32cube_sources(firmware.elf)
-
-  add_custom_command(TARGET firmware.elf POST_BUILD
-    COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:firmware.elf> ${CMAKE_BINARY_DIR}/firmware.hex
-    COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:firmware.elf> ${CMAKE_BINARY_DIR}/firmware.bin
-    COMMAND ${CMAKE_SIZE} $<TARGET_FILE:firmware.elf>
+function(_firmware_add_hex_and_size target)
+  add_custom_command(TARGET ${target} POST_BUILD
+    COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${target}> ${CMAKE_BINARY_DIR}/firmware.hex
+    COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${target}> ${CMAKE_BINARY_DIR}/firmware.bin
+    COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${target}>
   )
+endfunction()
+
+function(add_firmware_target board_name)
+  _firmware_configure_board(${board_name})
+
+  add_executable(${FIRMWARE_TARGET} ${FIRMWARE_APP_SOURCES})
+
+  _firmware_apply_board(${FIRMWARE_TARGET})
+  _firmware_apply_toolchain(${FIRMWARE_TARGET})
+  _firmware_apply_app_includes(${FIRMWARE_TARGET} ${board_name})
+
+  target_compile_definitions(${FIRMWARE_TARGET} PRIVATE USE_HAL_DRIVER ${DEVICE_DEFINE})
+
+  add_stm32cube_sources(${FIRMWARE_TARGET})
+  _firmware_add_hex_and_size(${FIRMWARE_TARGET})
 endfunction()

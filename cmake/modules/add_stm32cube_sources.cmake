@@ -1,18 +1,18 @@
 function(add_stm32cube_sources target)
   if(NOT DEFINED FAMILY_NAME)
-    message(FATAL_ERROR "FAMILY_NAME is not set in core/${MCU_NAME}/firmware.cmake")
+    message(FATAL_ERROR "FAMILY_NAME is not set (configs/boards/<board>/board.cmake)")
   endif()
   if(NOT DEFINED FREERTOS_PORT)
-    message(FATAL_ERROR "FREERTOS_PORT is not set in core/${MCU_NAME}/firmware.cmake")
+    message(FATAL_ERROR "FREERTOS_PORT is not set (CORE_TYPE in board.cmake)")
   endif()
 
   set(HAL_DIR "${CMAKE_SOURCE_DIR}/driver/hal/${FAMILY_NAME}")
-  set(CMSIS_DEVICE_DIR "${CMAKE_SOURCE_DIR}/driver/cmsis/device/st/${FAMILY_NAME}")
+  set(CMSIS_DEVICE_DIR "${CMAKE_SOURCE_DIR}/core/cmsis/device/st/${FAMILY_NAME}")
   set(HAL_PREFIX "${FAMILY_NAME}_hal")
   set(FREERTOS_PORT_DIR "${CMAKE_SOURCE_DIR}/middlewares/freertos/portable/GCC/${FREERTOS_PORT}")
 
   target_include_directories(${target} PRIVATE
-    ${CMAKE_SOURCE_DIR}/driver/cmsis/include
+    ${CMAKE_SOURCE_DIR}/core/cmsis/include
     ${CMSIS_DEVICE_DIR}/include
     ${HAL_DIR}/inc
     ${CMAKE_SOURCE_DIR}/middlewares/freertos/include

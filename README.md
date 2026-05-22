@@ -1,35 +1,37 @@
 # STM32F2 FreeRTOS
 
-Firmware build with **MCU** + **board** as two independent CMake options.
+Firmware build is selected by **BOARD**; each board has a `board.cmake` with MCU/family/device/core type.
 
 ## Layout (short)
 
 | Path | Role |
 |------|------|
-| `core/<mcu>/` | Startup, system, linker, **`firmware.cmake`** (toolchain, `DEVICE_DEFINE`, FreeRTOS port name) |
+| `core/cmsis/` | ARM CMSIS core headers + ST device headers (`device/st/<family>/`) |
+| `core/mcu/<mcu>/` | Startup, system, linker, **`firmware.cmake`** (paths only) |
+| `configs/boards/<board>/board.cmake` | `MCU_NAME`, `FAMILY_NAME`, `DEVICE_DEFINE`, `CORE_TYPE`, `BOARD_SOURCES`, `BOARD_INCLUDE_DIRS` |
 | `configs/hal/<mcu>/` | `stm32f2xx_hal_conf.h` |
 | `configs/freertos/<mcu>/` | `FreeRTOSConfig.h` |
-| `configs/boards/<board>/` | `bsp_clk_cfg.h` (and component cfg headers), **`sources.cmake`** |
+| `configs/boards/<board>/` | **`board.cmake`**, `bsp_*_cfg.h` |
 | `driver/bsp/common/` | `bsp.c` / `bsp.h` |
 | `driver/bsp/device/<component>/<board>/` | e.g. LED driver |
 | `app/` | `main`, tasks |
-| `driver/cmsis`, `driver/hal`, `middlewares/freertos` | CMSIS + STM32F2 HAL + FreeRTOS kernel + port |
+| `driver/hal`, `middlewares/freertos` | STM32F2 HAL + FreeRTOS kernel + port |
 
-**CMSIS device** for F2 must be under `driver/cmsis/device/st/stm32f2xx/include/` (lowercase **`include`**, not `Include`).
+**CMSIS device** for F2 must be under `core/cmsis/device/st/stm32f2xx/include/` (lowercase **`include`**, not `Include`).
 
 ## Default: NUCLEO-F207ZG
 
-- **MCU:** `stm32f207zg` — Cortex-M3, `STM32F207xx`, port `ARM_CM3`
-- **Board:** `nucleo_f207zg` — user LED LD2 = **PB7**
+- **Board:** `nucleo_f207zg` — see `configs/boards/nucleo_f207zg/board.cmake` (MCU `stm32f207zg`, `STM32F207xx`, `cortex-m3`)
+- User LED LD2 = **PB7**
 
 ## Build
 
 ```bash
 bash scripts/build.sh
-# override:
-MCU_NAME=stm32f207zg BOARD=nucleo_f207zg bash scripts/build.sh
+# another board:
+BOARD=my_board bash scripts/build.sh
 ```
 
 Artifacts: `build/firmware.elf`, `.hex`, `.bin`.
 
-`vendor/stm32cube_f2` is a shallow STM32CubeF2 clone (reference for copying startup/HAL). See `docs/add-new-mcu-guide.md` to add another F2 MCU or board.
+To add a board: create `configs/boards/<board>/board.cmake` (defines + `BOARD_SOURCES` / `BOARD_INCLUDE_DIRS`) and BSP cfg headers, plus `core/mcu/<mcu>/` and `configs/hal|freertos/<mcu>/` if needed.
