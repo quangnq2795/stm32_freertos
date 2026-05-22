@@ -67,11 +67,16 @@ int tm_listen(sys_node_t from_src, uint32_t queue_length);
 
 int tm_send(sys_node_t to_id, sys_msg_t *msg, TickType_t timeout);
 
+/* msg->src is always set to SYS_NODE_ISR. Requires dst task listen(ISR) at tm_init. */
 int tm_send_from_isr(sys_node_t to_id,
                      sys_msg_t *msg,
                      BaseType_t *hpw);
 
-int tm_recv(sys_msg_t *msg, TickType_t timeout);
+/* Non-blocking: returns TM_ERR_EMPTY immediately if no message. */
+int tm_recv(sys_msg_t *msg);
+
+/* Block until tm_send / tm_send_from_isr notifies this task. */
+void tm_task_wait_noti(void);
 
 sys_node_t tm_self(void);
 

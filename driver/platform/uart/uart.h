@@ -29,14 +29,12 @@ typedef uint8_t uart_id_t;
 
 typedef enum {
     UART_EVENT_RX_AVAILABLE,
-    UART_EVENT_RX_OVERFLOW,
     UART_EVENT_TX_EMPTY,
     UART_EVENT_ERROR,
 } uart_event_t;
 
 /* Callback is invoked from UART interrupt context (ISR).
  * It is expected to be ISR-safe (e.g. wakeup a FreeRTOS task).
- * UART_EVENT_RX_OVERFLOW: fewer bytes stored in RX ring than received (ring full).
  */
 typedef void (*uart_event_callback_t)(uart_id_t id, uart_event_t event);
 

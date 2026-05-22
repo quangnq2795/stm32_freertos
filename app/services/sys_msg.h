@@ -13,6 +13,7 @@ typedef enum
 typedef enum
 {
     SYS_NODE_NONE = 0,
+    SYS_NODE_ISR, /* Virtual node: ISR -> task via tm_send_from_isr (not a task). */
     SYS_NODE_CLI,
     SYS_NODE_BLE,
     SYS_NODE_SENSOR,

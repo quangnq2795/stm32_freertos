@@ -77,6 +77,24 @@ static tm_link_t *tm_alloc_link(void)
     return NULL;
 }
 
+static void tm_notify_dst(sys_node_t dst)
+{
+    tm_task_entry_t *task = tm_find_task(dst);
+
+    if (task != NULL && task->task != NULL) {
+        (void)xTaskNotify(task->task, 0, eIncrement);
+    }
+}
+
+static void tm_notify_dst_from_isr(sys_node_t dst, BaseType_t *hpw)
+{
+    tm_task_entry_t *task = tm_find_task(dst);
+
+    if (task != NULL && task->task != NULL) {
+        (void)xTaskNotifyFromISR(task->task, 0, eIncrement, hpw);
+    }
+}
+
 static int tm_listen_to(sys_node_t dst, sys_node_t src, uint32_t queue_length)
 {
     tm_task_entry_t *task;
@@ -128,7 +146,7 @@ static int tm_listen_to(sys_node_t dst, sys_node_t src, uint32_t queue_length)
     return TM_OK;
 }
 
-static int tm_receive(sys_node_t dst, sys_msg_t *msg, TickType_t timeout)
+static int tm_receive(sys_node_t dst, sys_msg_t *msg)
 {
     tm_task_entry_t *task;
     QueueSetMemberHandle_t active;
@@ -148,7 +166,7 @@ static int tm_receive(sys_node_t dst, sys_msg_t *msg, TickType_t timeout)
         return TM_ERR_NOT_FOUND;
     }
 
-    active = xQueueSelectFromSet(task->set, timeout);
+    active = xQueueSelectFromSet(task->set, 0);
     if (active == NULL) {
         return TM_ERR_EMPTY;
     }
@@ -183,11 +201,11 @@ static int tm_forward(sys_node_t hop, sys_msg_t *msg, TickType_t timeout)
     return tm_send(next, msg, timeout);
 }
 
-static int tm_receive_forward(sys_node_t dst, sys_msg_t *msg, TickType_t timeout)
+static int tm_receive_forward(sys_node_t dst, sys_msg_t *msg)
 {
     int status;
 
-    status = tm_receive(dst, msg, timeout);
+    status = tm_receive(dst, msg);
     if (status != TM_OK) {
         return status;
     }
@@ -196,7 +214,8 @@ static int tm_receive_forward(sys_node_t dst, sys_msg_t *msg, TickType_t timeout
         return TM_OK;
     }
 
-    status = tm_forward(dst, msg, timeout);
+    /* Message already dequeued; block on forward rather than drop. */
+    status = tm_forward(dst, msg, portMAX_DELAY);
     if (status == TM_OK) {
         return TM_OK_FORWARDED;
     }
@@ -210,11 +229,11 @@ static void tm_msg_loop(void *arg)
     sys_msg_t msg;
 
     for (;;) {
-        if (tm_receive_forward(self->id, &msg, portMAX_DELAY) != TM_OK) {
-            continue;
-        }
-        if (self->handler != NULL) {
-            self->handler(&msg, self->handler_ctx);
+        tm_task_wait_noti();
+        while (tm_receive_forward(self->id, &msg) == TM_OK) {
+            if (self->handler != NULL) {
+                self->handler(&msg, self->handler_ctx);
+            }
         }
     }
 }
@@ -250,7 +269,8 @@ int tm_init(const tm_task_cfg_t *cfg)
     uint8_t i;
     BaseType_t created;
 
-    if (cfg == NULL || cfg->id == SYS_NODE_NONE || cfg->name == NULL) {
+    if (cfg == NULL || cfg->id == SYS_NODE_NONE || cfg->id == SYS_NODE_ISR ||
+        cfg->name == NULL) {
         return TM_ERR_PARAM;
     }
 
@@ -293,6 +313,13 @@ int tm_init(const tm_task_cfg_t *cfg)
                 entry->id = SYS_NODE_NONE;
                 return TM_ERR_FULL;
             }
+        }
+    }
+
+    if (cfg->id != SYS_NODE_ISR && tm_find_link(SYS_NODE_ISR, cfg->id) == NULL) {
+        if (tm_listen_to(cfg->id, SYS_NODE_ISR, 0U) != TM_OK) {
+            entry->id = SYS_NODE_NONE;
+            return TM_ERR_FULL;
         }
     }
 
@@ -358,6 +385,7 @@ int tm_send(sys_node_t to_id, sys_msg_t *msg, TickType_t timeout)
         return TM_ERR_FULL;
     }
 
+    tm_notify_dst(to_id);
     return TM_OK;
 }
 
@@ -366,18 +394,14 @@ int tm_send_from_isr(sys_node_t to_id,
                      BaseType_t *hpw)
 {
     tm_link_t *link;
-    sys_node_t self;
 
-    if (msg == NULL || to_id == SYS_NODE_NONE) {
+    if (msg == NULL || to_id == SYS_NODE_NONE || to_id == SYS_NODE_ISR) {
         return TM_ERR_PARAM;
     }
 
-    self = (sys_node_t)msg->src;
-    if (self == SYS_NODE_NONE) {
-        return TM_ERR_PARAM;
-    }
+    msg->src = (uint32_t)SYS_NODE_ISR;
 
-    link = tm_find_link(self, to_id);
+    link = tm_find_link(SYS_NODE_ISR, to_id);
     if (link == NULL) {
         return TM_ERR_NOT_FOUND;
     }
@@ -386,10 +410,11 @@ int tm_send_from_isr(sys_node_t to_id,
         return TM_ERR_FULL;
     }
 
+    tm_notify_dst_from_isr(to_id, hpw);
     return TM_OK;
 }
 
-int tm_recv(sys_msg_t *msg, TickType_t timeout)
+int tm_recv(sys_msg_t *msg)
 {
     sys_node_t self = tm_self();
 
@@ -397,7 +422,12 @@ int tm_recv(sys_msg_t *msg, TickType_t timeout)
         return TM_ERR_PARAM;
     }
 
-    return tm_receive_forward(self, msg, timeout);
+    return tm_receive_forward(self, msg);
+}
+
+void tm_task_wait_noti(void)
+{
+    (void)ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 }
 
 sys_node_t tm_self(void)

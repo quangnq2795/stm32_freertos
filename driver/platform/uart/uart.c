@@ -216,13 +216,8 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
   /* Re-arm RX before notifying task (same reason as byte-at-a-time path). */
   uart_rx_try_start(id);
 
-  if (g_uarts[id].evt_cb != NULL) {
-    if (pushed > 0U) {
-      g_uarts[id].evt_cb(id, UART_EVENT_RX_AVAILABLE);
-    }
-    if (pushed < Size) {
-      g_uarts[id].evt_cb(id, UART_EVENT_RX_OVERFLOW);
-    }
+  if (g_uarts[id].evt_cb != NULL && pushed > 0U) {
+    g_uarts[id].evt_cb(id, UART_EVENT_RX_AVAILABLE);
   }
 }
 

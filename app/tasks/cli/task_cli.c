@@ -1,12 +1,14 @@
 #include "FreeRTOS.h"
-#include "task.h"
 
 #include <string.h>
 
 #include "cli_cmd.h"
+#include "sys_msg.h"
 #include "task.cli.h"
 #include "taskmanager.h"
 #include "uart.h"
+
+#define CLI_OPCODE_UART_RX 0U
 
 #ifndef CLI_UART_ID
 #define CLI_UART_ID 0U
@@ -15,9 +17,9 @@
 #define CLI_TASK_STACK_WORDS 512U
 #define CLI_TASK_PRIO (tskIDLE_PRIORITY + 1U)
 
-static volatile uint8_t s_rx_overflow = 0U;
-
 static void cli_process_line(char *line, size_t line_len);
+static void cli_drain_uart(void);
+static void cli_msg_handler(const sys_msg_t *msg);
 
 void cli_print(const char *s)
 {
@@ -40,53 +42,72 @@ static const cli_cmd_entry_t *const s_cmd_tables[] = {
 
 static void cli_uart_evt_cb(uart_id_t id, uart_event_t evt)
 {
-  TaskHandle_t cli_task;
-  (void)id;
-  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  sys_msg_t msg = {0};
+  BaseType_t hpw = pdFALSE;
 
-  if (evt == UART_EVENT_RX_OVERFLOW) {
-    s_rx_overflow = 1U;
+  (void)id;
+
+  if (evt != UART_EVENT_RX_AVAILABLE) {
+    return;
   }
 
-  if ((evt == UART_EVENT_RX_AVAILABLE) || (evt == UART_EVENT_RX_OVERFLOW)) {
-    cli_task = tm_handle(SYS_NODE_CLI);
-    if (cli_task != NULL) {
-      vTaskNotifyGiveFromISR(cli_task, &xHigherPriorityTaskWoken);
-      portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+  msg.dst = (uint32_t)SYS_NODE_CLI;
+  msg.opcode = CLI_OPCODE_UART_RX;
+  if (tm_send_from_isr(SYS_NODE_CLI, &msg, &hpw) == TM_OK) {
+    portYIELD_FROM_ISR(hpw);
+  }
+}
+
+static void uart_rx_handler(void)
+{
+  static char line[64];
+  static size_t line_len;
+
+  while (uart_rx_available(CLI_UART_ID) > 0U) {
+    uint8_t buf[32];
+    size_t n = uart_read(CLI_UART_ID, buf, sizeof(buf));
+    for (size_t i = 0; i < n; ++i) {
+      uint8_t c = buf[i];
+      if (c == '\r' || c == '\n') {
+        if (line_len > 0U) {
+          line[line_len] = '\0';
+          cli_process_line(line, line_len);
+        }
+        line_len = 0U;
+      } else if (line_len < (sizeof(line) - 1U)) {
+        line[line_len++] = (char)c;
+      } else {
+        line_len = 0U;
+      }
     }
+  }
+}
+
+static void cli_msg_handler(const sys_msg_t *msg)
+{
+  if (msg == NULL) {
+    return;
+  }
+
+  if (msg->opcode != CLI_OPCODE_UART_RX) {
+    uart_rx_handler(msg);
+    return;
   }
 }
 
 static void task_cli(void *argument)
 {
+  sys_msg_t msg;
+
   (void)argument;
 
   uart_init(CLI_UART_ID);
   uart_register_event_callback(CLI_UART_ID, cli_uart_evt_cb);
 
-  char line[64];
-  size_t line_len = 0U;
-
   for (;;) {
-    (void)ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
-    while (uart_rx_available(CLI_UART_ID) > 0U) {
-      uint8_t buf[32];
-      size_t n = uart_read(CLI_UART_ID, buf, sizeof(buf));
-      for (size_t i = 0; i < n; ++i) {
-        uint8_t c = buf[i];
-        if (c == '\r' || c == '\n') {
-          if (line_len > 0U) {
-            line[line_len] = '\0';
-            cli_process_line(line, line_len);
-          }
-          line_len = 0U;
-        } else if (line_len < (sizeof(line) - 1U)) {
-          line[line_len++] = (char)c;
-        } else {
-          line_len = 0U;
-        }
-      }
+    tm_task_wait_noti();
+    while (tm_recv(&msg) == TM_OK) {
+      cli_msg_handler(&msg);
     }
   }
 }
