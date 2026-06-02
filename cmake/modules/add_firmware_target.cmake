@@ -6,13 +6,13 @@ set(FIRMWARE_APP_SOURCES
   app/main.c
   app/tasks/os.c
   app/tasks/cli/task_cli.c
-  app/services/taskmanager/taskmanager.c
-  common/lib/ringbuf.c
+  middleware/taskmanager/taskmanager.c
+  lib/ringbuf/ringbuf.c
 )
 
 # Macros: include board/mcu cmake in caller scope (sets MCU_NAME, MCU_FLAGS, ...).
 macro(_firmware_configure_board board_name)
-  set(_board_cmake "${CMAKE_SOURCE_DIR}/configs/boards/${board_name}/board.cmake")
+  set(_board_cmake "${CMAKE_SOURCE_DIR}/config/boards/${board_name}/board.cmake")
   if(NOT EXISTS "${_board_cmake}")
     message(FATAL_ERROR "Board definition not found: ${_board_cmake}")
   endif()
@@ -43,7 +43,7 @@ macro(_firmware_configure_board board_name)
     message(FATAL_ERROR "Unknown CORE_TYPE '${CORE_TYPE}' in ${_board_cmake}")
   endif()
 
-  include(${CMAKE_SOURCE_DIR}/core/mcu/${MCU_NAME}/firmware.cmake)
+  include(${CMAKE_SOURCE_DIR}/core/${MCU_NAME}/firmware.cmake)
 endmacro()
 
 function(_firmware_apply_board target)
@@ -73,13 +73,14 @@ function(_firmware_apply_app_includes target board_name)
   target_include_directories(${target} PRIVATE
     ${CMAKE_SOURCE_DIR}/app
     ${CMAKE_SOURCE_DIR}/app/tasks/cli
-    ${CMAKE_SOURCE_DIR}/app/services
-    ${CMAKE_SOURCE_DIR}/app/services/taskmanager
-    ${CMAKE_SOURCE_DIR}/configs
-    ${CMAKE_SOURCE_DIR}/configs/boards/${board_name}
-    ${CMAKE_SOURCE_DIR}/configs/hal/${MCU_NAME}
-    ${CMAKE_SOURCE_DIR}/configs/freertos/${MCU_NAME}
-    ${CMAKE_SOURCE_DIR}/common/lib
+    ${CMAKE_SOURCE_DIR}/middleware
+    ${CMAKE_SOURCE_DIR}/middleware/taskmanager
+    ${CMAKE_SOURCE_DIR}/config
+    ${CMAKE_SOURCE_DIR}/config/boards/${board_name}
+    ${CMAKE_SOURCE_DIR}/config/hal/${MCU_NAME}
+    ${CMAKE_SOURCE_DIR}/config/freertos/${MCU_NAME}
+    ${CMAKE_SOURCE_DIR}/bsp/${board_name}
+    ${CMAKE_SOURCE_DIR}/lib/ringbuf
   )
 endfunction()
 

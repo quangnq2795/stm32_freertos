@@ -1,6 +1,6 @@
 #include "clk.h"
 
-#include "boards_clk_cfg.h"
+#include "bsp_clk_cfg.h"
 
 static void clk_halt(void)
 {

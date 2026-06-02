@@ -1,5 +1,5 @@
 #include "uart.h"
-#include "boards_uart_cfg.h"
+#include "bsp_uart_cfg.h"
 
 #include "ringbuf.h"
 

@@ -1,5 +1,5 @@
 #include "led.h"
-#include "boards_led_cfg.h"
+#include "bsp_led_cfg.h"
 
 #include "stm32f2xx_hal.h"
 

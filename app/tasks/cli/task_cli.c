@@ -18,7 +18,6 @@
 #define CLI_TASK_PRIO (tskIDLE_PRIORITY + 1U)
 
 static void cli_process_line(char *line, size_t line_len);
-static void cli_drain_uart(void);
 static void cli_msg_handler(const sys_msg_t *msg);
 
 void cli_print(const char *s)
@@ -89,8 +88,8 @@ static void cli_msg_handler(const sys_msg_t *msg)
     return;
   }
 
-  if (msg->opcode != CLI_OPCODE_UART_RX) {
-    uart_rx_handler(msg);
+  if (msg->opcode == CLI_OPCODE_UART_RX) {
+    uart_rx_handler();
     return;
   }
 }
