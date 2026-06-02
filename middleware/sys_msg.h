@@ -20,6 +20,7 @@ typedef enum
     SYS_NODE_AUDIO,
     SYS_NODE_MOTOR,
     SYS_NODE_CONTROL,
+    SYS_NODE_IR,
 } sys_node_t;
 
 typedef struct sys_msg_args_t

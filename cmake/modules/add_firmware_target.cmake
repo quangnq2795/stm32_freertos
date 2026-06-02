@@ -6,6 +6,7 @@ set(FIRMWARE_APP_SOURCES
   app/main.c
   app/tasks/os.c
   app/tasks/cli/task_cli.c
+  app/tasks/ir/task_ir.c
   middleware/taskmanager/taskmanager.c
   lib/ringbuf/ringbuf.c
 )
@@ -73,8 +74,14 @@ function(_firmware_apply_app_includes target board_name)
   target_include_directories(${target} PRIVATE
     ${CMAKE_SOURCE_DIR}/app
     ${CMAKE_SOURCE_DIR}/app/tasks/cli
+    ${CMAKE_SOURCE_DIR}/app/tasks/ir
     ${CMAKE_SOURCE_DIR}/middleware
     ${CMAKE_SOURCE_DIR}/middleware/taskmanager
+    ${CMAKE_SOURCE_DIR}/middleware/h_soft_timer
+    ${CMAKE_SOURCE_DIR}/middleware/ir_rx
+    ${CMAKE_SOURCE_DIR}/middleware/ir_tx
+    ${CMAKE_SOURCE_DIR}/drivers/device/ir_rx
+    ${CMAKE_SOURCE_DIR}/drivers/device/ir_tx
     ${CMAKE_SOURCE_DIR}/config
     ${CMAKE_SOURCE_DIR}/config/boards/${board_name}
     ${CMAKE_SOURCE_DIR}/config/hal/${MCU_NAME}

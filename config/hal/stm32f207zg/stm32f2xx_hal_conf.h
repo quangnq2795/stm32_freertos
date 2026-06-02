@@ -12,6 +12,8 @@ extern "C" {
 #define HAL_DMA_MODULE_ENABLED
 #define HAL_FLASH_MODULE_ENABLED
 #define HAL_UART_MODULE_ENABLED
+#define HAL_TIM_MODULE_ENABLED
+#define HAL_EXTI_MODULE_ENABLED
 
 #define HSE_VALUE    ((uint32_t)8000000U)
 #define HSE_STARTUP_TIMEOUT    ((uint32_t)100U)
@@ -39,6 +41,8 @@ extern "C" {
 #include "stm32f2xx_hal_dma.h"
 #include "stm32f2xx_hal_flash.h"
 #include "stm32f2xx_hal_uart.h"
+#include "stm32f2xx_hal_tim.h"
+#include "stm32f2xx_hal_exti.h"
 
 #ifdef __cplusplus
 }

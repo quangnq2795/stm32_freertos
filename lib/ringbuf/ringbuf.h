@@ -30,3 +30,5 @@ uint16_t ringbuf_space(const ringbuf_u8_t *rb);
 size_t ringbuf_push(ringbuf_u8_t *rb, const uint8_t *data, size_t len);
 size_t ringbuf_pop(ringbuf_u8_t *rb, uint8_t *out, size_t len);
 
+void ringbuf_reset(ringbuf_u8_t *rb);
+

@@ -136,15 +136,6 @@ void uart_register_event_callback(uart_id_t id, uart_event_callback_t cb)
   g_uarts[id].evt_cb = cb;
 }
 
-size_t uart_rx_available(uart_id_t id)
-{
-  if (id >= BSP_UART_COUNT) {
-    return 0U;
-  }
-
-  return ringbuf_len(&g_rx_rb[id]);
-}
-
 size_t uart_read(uart_id_t id, uint8_t *out, size_t max_len)
 {
   if (id >= BSP_UART_COUNT || out == 0 || max_len == 0U) {

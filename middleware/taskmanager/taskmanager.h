@@ -76,7 +76,11 @@ int tm_send_from_isr(sys_node_t to_id,
 int tm_recv(sys_msg_t *msg);
 
 /* Block until tm_send / tm_send_from_isr notifies this task. */
-void tm_task_wait_noti(void);
+void tm_wait_notif(void);
+
+void tm_noti(sys_node_t dst);
+
+void tm_noti_from_isr(sys_node_t dst, BaseType_t *hpw);
 
 sys_node_t tm_self(void);
 

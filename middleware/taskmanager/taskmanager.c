@@ -77,7 +77,7 @@ static tm_link_t *tm_alloc_link(void)
     return NULL;
 }
 
-static void tm_notify_dst(sys_node_t dst)
+void tm_noti(sys_node_t dst)
 {
     tm_task_entry_t *task = tm_find_task(dst);
 
@@ -86,7 +86,7 @@ static void tm_notify_dst(sys_node_t dst)
     }
 }
 
-static void tm_notify_dst_from_isr(sys_node_t dst, BaseType_t *hpw)
+void tm_noti_from_isr(sys_node_t dst, BaseType_t *hpw)
 {
     tm_task_entry_t *task = tm_find_task(dst);
 
@@ -229,7 +229,7 @@ static void tm_msg_loop(void *arg)
     sys_msg_t msg;
 
     for (;;) {
-        tm_task_wait_noti();
+        tm_wait_notif();
         while (tm_receive_forward(self->id, &msg) == TM_OK) {
             if (self->handler != NULL) {
                 self->handler(&msg, self->handler_ctx);
@@ -385,7 +385,7 @@ int tm_send(sys_node_t to_id, sys_msg_t *msg, TickType_t timeout)
         return TM_ERR_FULL;
     }
 
-    tm_notify_dst(to_id);
+    tm_noti(to_id);
     return TM_OK;
 }
 
@@ -410,7 +410,7 @@ int tm_send_from_isr(sys_node_t to_id,
         return TM_ERR_FULL;
     }
 
-    tm_notify_dst_from_isr(to_id, hpw);
+    tm_noti_from_isr(to_id, hpw);
     return TM_OK;
 }
 
@@ -425,7 +425,7 @@ int tm_recv(sys_msg_t *msg)
     return tm_receive_forward(self, msg);
 }
 
-void tm_task_wait_noti(void)
+void tm_wait_notif(void)
 {
     (void)ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 }

@@ -61,10 +61,10 @@ static void uart_rx_handler(void)
 {
   static char line[64];
   static size_t line_len;
+  uint8_t buf[32];
+  size_t n;
 
-  while (uart_rx_available(CLI_UART_ID) > 0U) {
-    uint8_t buf[32];
-    size_t n = uart_read(CLI_UART_ID, buf, sizeof(buf));
+  while ((n = uart_read(CLI_UART_ID, buf, sizeof(buf))) > 0U) {
     for (size_t i = 0; i < n; ++i) {
       uint8_t c = buf[i];
       if (c == '\r' || c == '\n') {
@@ -104,7 +104,7 @@ static void task_cli(void *argument)
   uart_register_event_callback(CLI_UART_ID, cli_uart_evt_cb);
 
   for (;;) {
-    tm_task_wait_noti();
+    tm_wait_notif();
     while (tm_recv(&msg) == TM_OK) {
       cli_msg_handler(&msg);
     }

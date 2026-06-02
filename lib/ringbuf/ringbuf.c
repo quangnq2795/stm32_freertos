@@ -91,3 +91,13 @@ size_t ringbuf_pop(ringbuf_u8_t *rb, uint8_t *out, size_t len)
   return popped;
 }
 
+void ringbuf_reset(ringbuf_u8_t *rb)
+{
+  if (rb == 0) {
+    return;
+  }
+
+  rb->head = 0U;
+  rb->tail = 0U;
+}
+

@@ -66,5 +66,4 @@ void   uart_init(uart_id_t id);
 size_t uart_read(uart_id_t id, uint8_t *out, size_t max_len);
 /* Enqueue up to len bytes into TX ring; returns count actually queued (may be < len). */
 size_t uart_write(uart_id_t id, const uint8_t *buf, size_t len);
-size_t uart_rx_available(uart_id_t id);
 void   uart_register_event_callback(uart_id_t id, uart_event_callback_t cb);

@@ -1,0 +1,11 @@
+#pragma once
+
+#include "stm32f2xx_hal.h"
+
+/* TIM2: 1 us free-running counter + one compare channel for middleware h_timer. */
+
+#define BSP_H_TIMER_INSTANCE      TIM2
+#define BSP_H_TIMER_CLK_ENABLE()  __HAL_RCC_TIM2_CLK_ENABLE()
+#define BSP_H_TIMER_IRQn          TIM2_IRQn
+#define BSP_H_TIMER_PRESCALER     59U
+#define BSP_H_TIMER_CHANNEL       TIM_CHANNEL_1
