@@ -128,7 +128,7 @@ void uart_init(uart_id_t id)
   uart_rx_try_start(id);
 }
 
-void uart_register_event_callback(uart_id_t id, uart_event_callback_t cb)
+void uart_register_event(uart_id_t id, uart_event_callback_t cb)
 {
   if (id >= BSP_UART_COUNT) {
     return;

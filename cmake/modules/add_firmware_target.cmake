@@ -8,6 +8,7 @@ set(FIRMWARE_APP_SOURCES
   app/tasks/cli/task_cli.c
   app/tasks/ir/task_ir.c
   middleware/taskmanager/taskmanager.c
+  middleware/serial/serial.c
   lib/ringbuf/ringbuf.c
   lib/slot_queue/slot_queue.c
 )
@@ -78,6 +79,7 @@ function(_firmware_apply_app_includes target board_name)
     ${CMAKE_SOURCE_DIR}/app/tasks/ir
     ${CMAKE_SOURCE_DIR}/middleware
     ${CMAKE_SOURCE_DIR}/middleware/taskmanager
+    ${CMAKE_SOURCE_DIR}/middleware/serial
     ${CMAKE_SOURCE_DIR}/middleware/h_soft_timer
     ${CMAKE_SOURCE_DIR}/middleware/ir_rx
     ${CMAKE_SOURCE_DIR}/middleware/ir_tx

@@ -23,6 +23,9 @@ typedef enum
     SYS_NODE_IR,
 } sys_node_t;
 
+/* SYS_NODE_CLI opcodes (task_cli). */
+#define CLI_OPCODE_RX  0U
+
 /* SYS_NODE_IR opcodes (task_ir). */
 #define IR_OPCODE_RX  0U
 #define IR_OPCODE_TX  1U
