@@ -9,6 +9,7 @@ set(FIRMWARE_APP_SOURCES
   app/tasks/ir/task_ir.c
   middleware/taskmanager/taskmanager.c
   lib/ringbuf/ringbuf.c
+  lib/slot_queue/slot_queue.c
 )
 
 # Macros: include board/mcu cmake in caller scope (sets MCU_NAME, MCU_FLAGS, ...).
@@ -88,6 +89,7 @@ function(_firmware_apply_app_includes target board_name)
     ${CMAKE_SOURCE_DIR}/config/freertos/${MCU_NAME}
     ${CMAKE_SOURCE_DIR}/bsp/${board_name}
     ${CMAKE_SOURCE_DIR}/lib/ringbuf
+    ${CMAKE_SOURCE_DIR}/lib/slot_queue
   )
 endfunction()
 

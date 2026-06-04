@@ -3,13 +3,15 @@
 #include "bsp_ir_rx_cfg.h"
 #include "h_soft_timer.h"
 #include "ir_rx_time.h"
-#include "ringbuf.h"
 
 #include "stm32f2xx_hal.h"
 
+#include <string.h>
+
 typedef struct
 {
-  ringbuf_u8_t pulse_ring;
+  uint16_t pulse_buf[BSP_IR_RX_MAX_PULSE_RING_CAP];
+  volatile uint16_t pulse_count;
   volatile uint32_t last_edge_tick_us;
   ir_rx_event_fn_t event_fn;
   int idle_timer_id;
@@ -17,8 +19,6 @@ typedef struct
 
 static ir_rx_hw_channel_t s_hw_channels[BSP_IR_RX_COUNT] = BSP_IR_RX_DESCS;
 static ir_rx_channel_runtime_t s_channel_rt[BSP_IR_RX_COUNT];
-static uint8_t s_pulse_byte_storage[BSP_IR_RX_COUNT]
-    [BSP_IR_RX_MAX_PULSE_RING_CAP * 2U];
 
 static ir_rx_channel_id_t ir_rx_drv_channel_from_pin(uint16_t gpio_pin)
 {
@@ -52,7 +52,7 @@ static void ir_rx_drv_idle_timer_fired(void *ctx)
 
   s_channel_rt[channel].idle_timer_id = H_SOFT_TIMER_INVALID_ID;
 
-  if (ringbuf_len(&s_channel_rt[channel].pulse_ring) == 0U) {
+  if (s_channel_rt[channel].pulse_count == 0U) {
     return;
   }
 
@@ -81,13 +81,14 @@ static void ir_rx_drv_idle_timer_arm(ir_rx_channel_id_t channel)
 
 static void ir_rx_drv_push_pulse_width(ir_rx_channel_id_t channel, uint16_t width_us)
 {
-  uint8_t raw_le[2];
+  uint16_t cap;
 
   if (channel >= BSP_IR_RX_COUNT) {
     return;
   }
 
-  if (ringbuf_space(&s_channel_rt[channel].pulse_ring) < 2U) {
+  cap = s_hw_channels[channel].hw.pulse_ring_cap;
+  if (s_channel_rt[channel].pulse_count >= cap) {
     ir_rx_drv_idle_timer_disarm(channel);
     if (s_channel_rt[channel].event_fn != NULL) {
       s_channel_rt[channel].event_fn(channel, IR_RX_EVT_BUF_OVERFLOW);
@@ -95,9 +96,8 @@ static void ir_rx_drv_push_pulse_width(ir_rx_channel_id_t channel, uint16_t widt
     return;
   }
 
-  raw_le[0] = (uint8_t)(width_us & 0xFFU);
-  raw_le[1] = (uint8_t)(width_us >> 8);
-  (void)ringbuf_push(&s_channel_rt[channel].pulse_ring, raw_le, 2U);
+  s_channel_rt[channel].pulse_buf[s_channel_rt[channel].pulse_count] = width_us;
+  s_channel_rt[channel].pulse_count++;
 }
 
 void ir_rx_drv_on_gpio_edge(ir_rx_channel_id_t channel, uint16_t gpio_pin)
@@ -137,13 +137,11 @@ void ir_rx_drv_init(ir_rx_channel_id_t channel)
 
   hw = &s_hw_channels[channel].hw;
 
+  s_channel_rt[channel].pulse_count = 0U;
   s_channel_rt[channel].last_edge_tick_us = 0U;
   s_channel_rt[channel].event_fn = NULL;
   s_channel_rt[channel].idle_timer_id = H_SOFT_TIMER_INVALID_ID;
   ir_rx_drv_idle_timer_disarm(channel);
-
-  ringbuf_init(&s_channel_rt[channel].pulse_ring, s_pulse_byte_storage[channel],
-               (uint16_t)(hw->pulse_ring_cap * 2U));
 
   if (channel == 0U) {
     ir_rx_time_init();
@@ -188,25 +186,38 @@ size_t ir_rx_drv_buffered_pulse_count(ir_rx_channel_id_t channel)
     return 0U;
   }
 
-  return (size_t)(ringbuf_len(&s_channel_rt[channel].pulse_ring) / 2U);
+  return (size_t)s_channel_rt[channel].pulse_count;
 }
 
 size_t ir_rx_drv_read_buffered_pulses(ir_rx_channel_id_t channel, uint16_t *out,
                                       size_t max_count)
 {
-  size_t read_count = 0U;
-  uint8_t raw_le[2];
+  size_t available;
+  size_t read_count;
 
   if (channel >= BSP_IR_RX_COUNT || out == NULL || max_count == 0U) {
     return 0U;
   }
 
-  while (read_count < max_count &&
-         ringbuf_pop(&s_channel_rt[channel].pulse_ring, raw_le, 2U) == 2U) {
-    out[read_count] =
-        (uint16_t)((uint16_t)raw_le[0] | ((uint16_t)raw_le[1] << 8));
-    read_count++;
+  available = (size_t)s_channel_rt[channel].pulse_count;
+  read_count = (available < max_count) ? available : max_count;
+  if (read_count == 0U) {
+    return 0U;
   }
+
+  (void)memcpy(out, s_channel_rt[channel].pulse_buf,
+               read_count * sizeof(uint16_t));
+
+  if (read_count < available) {
+    size_t remaining = available - read_count;
+    (void)memmove(&s_channel_rt[channel].pulse_buf[0],
+                  &s_channel_rt[channel].pulse_buf[read_count],
+                  remaining * sizeof(uint16_t));
+    s_channel_rt[channel].pulse_count = (uint16_t)remaining;
+  } else {
+    s_channel_rt[channel].pulse_count = 0U;
+  }
+
   return read_count;
 }
 
@@ -216,7 +227,7 @@ void ir_rx_drv_flush_buffer(ir_rx_channel_id_t channel)
     return;
   }
 
-  ringbuf_reset(&s_channel_rt[channel].pulse_ring);
+  s_channel_rt[channel].pulse_count = 0U;
   ir_rx_drv_idle_timer_disarm(channel);
 }
 
