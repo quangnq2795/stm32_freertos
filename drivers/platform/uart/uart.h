@@ -27,20 +27,19 @@
 /* UART identifier (numeric ID: 0..BSP_UART_COUNT-1) */
 typedef uint8_t uart_id_t;
 
-typedef enum {
-    UART_EVENT_RX_AVAILABLE,
-    UART_EVENT_TX_EMPTY,
-    UART_EVENT_ERROR,
+typedef enum
+{
+  UART_EVENT_RX_AVAILABLE,
+  UART_EVENT_TX_EMPTY,
 } uart_event_t;
 
 /* Callback is invoked from UART interrupt context (ISR).
- * It is expected to be ISR-safe (e.g. wakeup a FreeRTOS task).
+ * Must be ISR-safe (e.g. FreeRTOS FromISR APIs only).
  */
 typedef void (*uart_event_callback_t)(uart_id_t id, uart_event_t event);
 
 typedef struct
 {
-  /* Board/config fields (static). */
   USART_TypeDef *instance;
   uint32_t baudrate;
 
@@ -56,14 +55,12 @@ typedef struct
   void (*uart_clk_enable)(void);
   IRQn_Type irqn;
 
-  /* Runtime fields (set/used by driver). */
   UART_HandleTypeDef huart;
   uart_event_callback_t evt_cb;
 } uart_desc_t;
 
-
-void   uart_init(uart_id_t id);
+void uart_init(uart_id_t id);
 size_t uart_read(uart_id_t id, uint8_t *out, size_t max_len);
-/* Enqueue up to len bytes into TX ring; returns count actually queued (may be < len). */
+/* Enqueue bytes into TX ring; returns count queued (may be < len). */
 size_t uart_write(uart_id_t id, const uint8_t *buf, size_t len);
-void   uart_register_event(uart_id_t id, uart_event_callback_t cb);
+void uart_register_event(uart_id_t id, uart_event_callback_t cb);
