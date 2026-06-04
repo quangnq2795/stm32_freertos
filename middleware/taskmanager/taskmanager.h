@@ -26,7 +26,6 @@ typedef enum
     TM_ERR_FULL = -2,
     TM_ERR_EMPTY = -3,
     TM_ERR_NOT_FOUND = -4,
-    TM_OK_FORWARDED = 1,
 } tm_status_t;
 
 typedef void (*tm_handler_fn)(const sys_msg_t *msg, void *ctx);

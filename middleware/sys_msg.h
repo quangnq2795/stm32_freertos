@@ -50,7 +50,6 @@ typedef struct sys_msg_t
     uint32_t id;
     uint32_t type;
     uint32_t src;
-    uint32_t dst;
     uint32_t opcode;
     union
     {

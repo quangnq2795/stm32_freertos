@@ -50,7 +50,6 @@ static void cli_uart_evt_cb(uart_id_t id, uart_event_t evt)
     return;
   }
 
-  msg.dst = (uint32_t)SYS_NODE_CLI;
   msg.opcode = CLI_OPCODE_UART_RX;
   if (tm_send_from_isr(SYS_NODE_CLI, &msg, &hpw) == TM_OK) {
     portYIELD_FROM_ISR(hpw);

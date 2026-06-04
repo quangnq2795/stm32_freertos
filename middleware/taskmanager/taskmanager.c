@@ -184,45 +184,6 @@ static int tm_receive(sys_node_t dst, sys_msg_t *msg)
     return TM_ERR_NOT_FOUND;
 }
 
-static int tm_forward(sys_node_t hop, sys_msg_t *msg, TickType_t timeout)
-{
-    sys_node_t next;
-
-    if (msg == NULL || hop == SYS_NODE_NONE) {
-        return TM_ERR_PARAM;
-    }
-
-    next = (sys_node_t)msg->dst;
-    if (next == SYS_NODE_NONE) {
-        return TM_ERR_PARAM;
-    }
-
-    msg->src = (uint32_t)hop;
-    return tm_send(next, msg, timeout);
-}
-
-static int tm_receive_forward(sys_node_t dst, sys_msg_t *msg)
-{
-    int status;
-
-    status = tm_receive(dst, msg);
-    if (status != TM_OK) {
-        return status;
-    }
-
-    if ((sys_node_t)msg->dst == dst) {
-        return TM_OK;
-    }
-
-    /* Message already dequeued; block on forward rather than drop. */
-    status = tm_forward(dst, msg, portMAX_DELAY);
-    if (status == TM_OK) {
-        return TM_OK_FORWARDED;
-    }
-
-    return status;
-}
-
 static void tm_msg_loop(void *arg)
 {
     tm_task_entry_t *self = (tm_task_entry_t *)arg;
@@ -230,7 +191,7 @@ static void tm_msg_loop(void *arg)
 
     for (;;) {
         tm_wait_notif();
-        while (tm_receive_forward(self->id, &msg) == TM_OK) {
+        while (tm_receive(self->id, &msg) == TM_OK) {
             if (self->handler != NULL) {
                 self->handler(&msg, self->handler_ctx);
             }
@@ -422,7 +383,7 @@ int tm_recv(sys_msg_t *msg)
         return TM_ERR_PARAM;
     }
 
-    return tm_receive_forward(self, msg);
+    return tm_receive(self, msg);
 }
 
 void tm_wait_notif(void)

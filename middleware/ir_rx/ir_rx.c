@@ -49,7 +49,6 @@ static void ir_rx_on_driver_event(ir_rx_channel_id_t channel, ir_rx_event_t even
       sys_msg_t msg = {0};
       BaseType_t hpw = pdFALSE;
 
-      msg.dst = (uint32_t)SYS_NODE_IR;
       msg.opcode = IR_OPCODE_RX;
       msg.u.arg.param1 = (uint32_t)channel;
       if (tm_send_from_isr(SYS_NODE_IR, &msg, &hpw) == TM_OK) {
