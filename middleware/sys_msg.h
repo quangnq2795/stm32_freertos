@@ -23,6 +23,14 @@ typedef enum
     SYS_NODE_IR,
 } sys_node_t;
 
+/* SYS_NODE_IR opcodes (task_ir). */
+#define IR_OPCODE_RX  0U
+#define IR_OPCODE_TX  1U
+
+/* IR_OPCODE_RX: arg.param1 = ir_rx_channel_id_t */
+/* IR_OPCODE_TX: arg.param1 = ir_tx channel, param2 = NEC address, param3 = NEC command,
+ *               param4 = repeat (0 = full frame, non-zero = repeat code) */
+
 typedef struct sys_msg_args_t
 {
     uint32_t param1;

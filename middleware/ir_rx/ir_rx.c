@@ -50,7 +50,7 @@ static void ir_rx_on_driver_event(ir_rx_channel_id_t channel, ir_rx_event_t even
       BaseType_t hpw = pdFALSE;
 
       msg.dst = (uint32_t)SYS_NODE_IR;
-      msg.opcode = IR_RX_OPCODE_BURST_READY;
+      msg.opcode = IR_OPCODE_RX;
       msg.u.arg.param1 = (uint32_t)channel;
       if (tm_send_from_isr(SYS_NODE_IR, &msg, &hpw) == TM_OK) {
         portYIELD_FROM_ISR(hpw);

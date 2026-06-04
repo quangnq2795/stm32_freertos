@@ -4,6 +4,7 @@
 #include "task.h"
 
 #include "bsp_ir_rx_cfg.h"
+#include "bsp_ir_tx_cfg.h"
 #include "ir_rx.h"
 #include "ir_tx.h"
 #include "sys_msg.h"
@@ -12,7 +13,7 @@
 #define IR_TASK_STACK_WORDS  384U
 #define IR_TASK_PRIO         (tskIDLE_PRIORITY + 2U)
 
-static void ir_handle_burst_ready(const sys_msg_t *msg)
+static void ir_handle_rx(const sys_msg_t *msg)
 {
   ir_rx_nec_frame_t frame;
 
@@ -25,6 +26,23 @@ static void ir_handle_burst_ready(const sys_msg_t *msg)
   }
 }
 
+static void ir_handle_tx(const sys_msg_t *msg)
+{
+  ir_tx_channel_id_t channel = (ir_tx_channel_id_t)msg->u.arg.param1;
+
+  if (channel >= BSP_IR_TX_COUNT) {
+    return;
+  }
+
+  if (msg->u.arg.param4 != 0U) {
+    (void)ir_tx_send_nec_repeat(channel);
+    return;
+  }
+
+  (void)ir_tx_send_nec(channel, (uint8_t)msg->u.arg.param2,
+                       (uint8_t)msg->u.arg.param3);
+}
+
 static void ir_msg_handler(const sys_msg_t *msg)
 {
   if (msg == NULL) {
@@ -32,8 +50,11 @@ static void ir_msg_handler(const sys_msg_t *msg)
   }
 
   switch (msg->opcode) {
-  case IR_RX_OPCODE_BURST_READY:
-    ir_handle_burst_ready(msg);
+  case IR_OPCODE_RX:
+    ir_handle_rx(msg);
+    break;
+  case IR_OPCODE_TX:
+    ir_handle_tx(msg);
     break;
   default:
     break;

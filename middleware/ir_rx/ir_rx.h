@@ -9,8 +9,6 @@
 
 #define IR_RX_BURST_QUEUE_DEPTH  3U
 
-#define IR_RX_OPCODE_BURST_READY  0U
-
 #define IR_RX_OK           0
 #define IR_RX_ERR_EMPTY   -1
 #define IR_RX_ERR_PARAM   -2
