@@ -9,8 +9,6 @@
 #include "sys_msg.h"
 #include "taskmanager.h"
 
-int vsnprintf(char *str, size_t size, const char *format, va_list ap);
-
 static uint8_t s_ready;
 
 void log_init(void)
@@ -21,6 +19,125 @@ void log_init(void)
 void log_set_ready(uint8_t ready)
 {
   s_ready = ready;
+}
+
+static size_t log_fmt_putc(char *out, size_t cap, size_t pos, char c)
+{
+  if (pos < cap) {
+    out[pos] = c;
+    return pos + 1U;
+  }
+
+  return pos;
+}
+
+static size_t log_fmt_str(char *out, size_t cap, size_t pos, const char *s)
+{
+  if (s == NULL) {
+    s = "(null)";
+  }
+
+  while (*s != '\0') {
+    pos = log_fmt_putc(out, cap, pos, *s++);
+  }
+
+  return pos;
+}
+
+static size_t log_fmt_uint(char *out, size_t cap, size_t pos, uint32_t val,
+                           uint32_t base, uint8_t uppercase)
+{
+  char tmp[10];
+  uint8_t n = 0U;
+
+  if (val == 0U) {
+    return log_fmt_putc(out, cap, pos, '0');
+  }
+
+  while (val > 0U) {
+    uint32_t digit = val % base;
+
+    if (digit < 10U) {
+      tmp[n++] = (char)('0' + digit);
+    } else {
+      tmp[n++] = (char)((uppercase != 0U) ? ('A' + digit - 10U)
+                                          : ('a' + digit - 10U));
+    }
+    val /= base;
+  }
+
+  while (n > 0U) {
+    pos = log_fmt_putc(out, cap, pos, tmp[--n]);
+  }
+
+  return pos;
+}
+
+static int log_vformat(char *out, size_t cap, const char *fmt, va_list ap)
+{
+  size_t pos = 0U;
+
+  if (out == NULL || cap == 0U || fmt == NULL) {
+    return -1;
+  }
+
+  while (*fmt != '\0') {
+    if (*fmt != '%') {
+      pos = log_fmt_putc(out, cap, pos, *fmt++);
+      continue;
+    }
+
+    fmt++;
+    if (*fmt == '\0') {
+      break;
+    }
+
+    switch (*fmt) {
+    case 's':
+      pos = log_fmt_str(out, cap, pos, va_arg(ap, const char *));
+      break;
+    case 'd': {
+      int v = va_arg(ap, int);
+
+      if (v < 0) {
+        pos = log_fmt_putc(out, cap, pos, '-');
+        pos = log_fmt_uint(out, cap, pos, (uint32_t)(-(v + 1)) + 1U, 10U, 0U);
+      } else {
+        pos = log_fmt_uint(out, cap, pos, (uint32_t)v, 10U, 0U);
+      }
+      break;
+    }
+    case 'u':
+      pos = log_fmt_uint(out, cap, pos, va_arg(ap, unsigned int), 10U, 0U);
+      break;
+    case 'x':
+      pos = log_fmt_uint(out, cap, pos, va_arg(ap, unsigned int), 16U, 0U);
+      break;
+    case 'X':
+      pos = log_fmt_uint(out, cap, pos, va_arg(ap, unsigned int), 16U, 1U);
+      break;
+    case 'c':
+      pos = log_fmt_putc(out, cap, pos, (char)va_arg(ap, int));
+      break;
+    case '%':
+      pos = log_fmt_putc(out, cap, pos, '%');
+      break;
+    default:
+      pos = log_fmt_putc(out, cap, pos, '%');
+      pos = log_fmt_putc(out, cap, pos, *fmt);
+      break;
+    }
+
+    fmt++;
+  }
+
+  if (pos < cap) {
+    out[pos] = '\0';
+  } else {
+    out[cap - 1U] = '\0';
+  }
+
+  return (int)pos;
 }
 
 static void log_post(char *data, size_t len)
@@ -35,7 +152,6 @@ static void log_post(char *data, size_t len)
     vPortFree(data);
   }
 }
-
 
 void log_printf(const char *fmt, ...)
 {
@@ -54,7 +170,7 @@ void log_printf(const char *fmt, ...)
   }
 
   va_start(ap, fmt);
-  n = vsnprintf(buf, LOG_LINE_MAX, fmt, ap);
+  n = log_vformat(buf, LOG_LINE_MAX, fmt, ap);
   va_end(ap);
 
   if (n <= 0) {

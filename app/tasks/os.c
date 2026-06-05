@@ -14,7 +14,7 @@ void os_init(void)
   h_soft_timer_init();
   task_log_create();
   task_cli_create();
-  task_ir_create();
+  //task_ir_create();
 }
 
 void os_start(void)
