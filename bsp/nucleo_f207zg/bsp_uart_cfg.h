@@ -1,5 +1,7 @@
 #pragma once
 
+#include "stm32f2xx_hal.h"
+
 #define BSP_UART_COUNT 2U
 
 /* ST-Link virtual COM on Nucleo-F207ZG is often USART3 (PD8/PD9), not USART1.
@@ -30,10 +32,6 @@
 #define BSP_UART2_CLK_ENABLE() __HAL_RCC_USART2_CLK_ENABLE()
 #define BSP_UART2_IRQN USART2_IRQn
 
-/* Helper macro: generate a small wrapper around GPIO/UART clock macros.
- * Note: pass the macro name without trailing `()` (e.g. BSP_UART2_CLK_ENABLE),
- * because wrapper calls it as `macro();`.
- */
 #define DEFINE_UART_CLK_ENABLE_FUNC(name, macro) \
   static inline void name(void) { macro(); }
 
@@ -41,7 +39,6 @@ DEFINE_UART_CLK_ENABLE_FUNC(uart1_gpio_clk_enable, BSP_UART1_GPIO_CLK_ENABLE)
 DEFINE_UART_CLK_ENABLE_FUNC(uart1_uart_clk_enable, BSP_UART1_CLK_ENABLE)
 DEFINE_UART_CLK_ENABLE_FUNC(uart2_gpio_clk_enable, BSP_UART2_GPIO_CLK_ENABLE)
 DEFINE_UART_CLK_ENABLE_FUNC(uart2_uart_clk_enable, BSP_UART2_CLK_ENABLE)
-
 
 #ifndef BSP_UART_IRQ_HANDLER
 #define BSP_UART_IRQ_HANDLER(USARTn) \

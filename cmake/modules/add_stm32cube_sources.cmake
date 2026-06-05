@@ -21,14 +21,7 @@ function(add_stm32cube_sources target)
     ${FREERTOS_PORT_DIR}
   )
 
-  target_sources(${target} PRIVATE
-    ${SYSTEM_FILE}
-    ${FREERTOS_DIR}/list.c
-    ${FREERTOS_DIR}/queue.c
-    ${FREERTOS_DIR}/timers.c
-    ${FREERTOS_DIR}/tasks.c
-    ${FREERTOS_PORT_DIR}/port.c
-    ${FREERTOS_DIR}/portable/MemMang/heap_4.c
+  set(STM32CUBE_HAL_SOURCES
     ${HAL_DIR}/src/${HAL_PREFIX}.c
     ${HAL_DIR}/src/${HAL_PREFIX}_dma.c
     ${HAL_DIR}/src/${HAL_PREFIX}_flash.c
@@ -40,6 +33,21 @@ function(add_stm32cube_sources target)
     ${HAL_DIR}/src/${HAL_PREFIX}_tim.c
     ${HAL_DIR}/src/${HAL_PREFIX}_tim_ex.c
     ${HAL_DIR}/src/${HAL_PREFIX}_exti.c
+  )
+
+  target_sources(${target} PRIVATE
+    ${SYSTEM_FILE}
+    ${FREERTOS_DIR}/list.c
+    ${FREERTOS_DIR}/queue.c
+    ${FREERTOS_DIR}/timers.c
+    ${FREERTOS_DIR}/tasks.c
+    ${FREERTOS_PORT_DIR}/port.c
+    ${FREERTOS_DIR}/portable/MemMang/heap_4.c
+    ${STM32CUBE_HAL_SOURCES}
     ${STARTUP_FILE}
   )
+
+  # STM32Cube HAL: suppress vendor warnings; do not patch third_party sources.
+  set_source_files_properties(${STM32CUBE_HAL_SOURCES}
+    PROPERTIES COMPILE_OPTIONS "-Wno-unused-parameter")
 endfunction()

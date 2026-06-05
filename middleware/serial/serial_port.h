@@ -1,7 +1,7 @@
 #pragma once
 
-#include "bsp_uart_cfg.h"
 #include "uart.h"
+#include "bsp_uart_cfg.h"
 
 /*
  * Logical serial ports (1-based), mapped to uart_id_t in BSP_UART_DESCS order.

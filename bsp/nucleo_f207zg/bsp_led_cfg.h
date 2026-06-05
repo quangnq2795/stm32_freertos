@@ -1,5 +1,7 @@
 #pragma once
 
+#include "stm32f2xx_hal.h"
+
 #define BSP_LED_COUNT 3U
 
 /* LED mapping (led1/2/3) -> physical pins */

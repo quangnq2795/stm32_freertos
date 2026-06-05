@@ -1,7 +1,5 @@
 #include "serial.h"
 
-#include "bsp_uart_cfg.h"
-
 static uint8_t s_tx_claimed[BSP_UART_COUNT];
 static uint8_t s_rx_claimed[BSP_UART_COUNT];
 static uint8_t s_hw_up[BSP_UART_COUNT];
