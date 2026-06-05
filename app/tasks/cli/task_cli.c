@@ -63,7 +63,7 @@ static int cli_serial_setup(void)
   return SERIAL_OK;
 }
 
-static void uart_rx_handler(void)
+static void cli_rx_handler(void)
 {
   static char line[CLI_LINE_MAX];
   static size_t line_len;
@@ -116,7 +116,7 @@ static void cli_task_handler(void *ctx)
     tm_wait_notif();
     while (tm_recv(&msg) == TM_OK) {
       if (msg.opcode == CLI_OPCODE_RX) {
-        uart_rx_handler();
+        cli_rx_handler();
       }
     }
   }
