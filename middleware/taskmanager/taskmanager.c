@@ -6,22 +6,12 @@ typedef struct
 {
     sys_node_t id;
     TaskHandle_t task;
-    QueueSetHandle_t set;
-    uint8_t listen_count;
+    QueueHandle_t queue;
     tm_handler_fn handler;
     void *handler_ctx;
 } tm_task_entry_t;
 
-typedef struct
-{
-    uint8_t used;
-    sys_node_t src;
-    sys_node_t dst;
-    QueueHandle_t queue;
-} tm_link_t;
-
 static tm_task_entry_t g_tasks[TM_MAX_TASK];
-static tm_link_t g_links[TM_MAX_LINKS];
 
 static tm_task_entry_t *tm_find_task(sys_node_t id)
 {
@@ -49,34 +39,6 @@ static tm_task_entry_t *tm_alloc_task(void)
     return NULL;
 }
 
-static tm_link_t *tm_find_link(sys_node_t src, sys_node_t dst)
-{
-    uint32_t i;
-
-    for (i = 0U; i < TM_MAX_LINKS; i++) {
-        if (g_links[i].used != 0U &&
-            g_links[i].src == src &&
-            g_links[i].dst == dst) {
-            return &g_links[i];
-        }
-    }
-
-    return NULL;
-}
-
-static tm_link_t *tm_alloc_link(void)
-{
-    uint32_t i;
-
-    for (i = 0U; i < TM_MAX_LINKS; i++) {
-        if (g_links[i].used == 0U) {
-            return &g_links[i];
-        }
-    }
-
-    return NULL;
-}
-
 void tm_noti(sys_node_t dst)
 {
     tm_task_entry_t *task = tm_find_task(dst);
@@ -95,93 +57,24 @@ void tm_noti_from_isr(sys_node_t dst, BaseType_t *hpw)
     }
 }
 
-static int tm_listen_to(sys_node_t dst, sys_node_t src, uint32_t queue_length)
-{
-    tm_task_entry_t *task;
-    tm_link_t *link;
-    QueueHandle_t queue;
-
-    if (dst == SYS_NODE_NONE || src == SYS_NODE_NONE || src == dst) {
-        return TM_ERR_PARAM;
-    }
-
-    if (queue_length == 0U) {
-        queue_length = TM_QUEUE_LENGTH;
-    }
-
-    task = tm_find_task(dst);
-    if (task == NULL) {
-        return TM_ERR_NOT_FOUND;
-    }
-
-    if (task->listen_count >= TM_MAX_LISTEN_PER_TASK) {
-        return TM_ERR_FULL;
-    }
-
-    if (tm_find_link(src, dst) != NULL) {
-        return TM_ERR_PARAM;
-    }
-
-    link = tm_alloc_link();
-    if (link == NULL) {
-        return TM_ERR_FULL;
-    }
-
-    queue = xQueueCreate((UBaseType_t)queue_length, sizeof(sys_msg_t));
-    if (queue == NULL) {
-        return TM_ERR_FULL;
-    }
-
-    if (xQueueAddToSet(queue, task->set) != pdPASS) {
-        vQueueDelete(queue);
-        return TM_ERR_FULL;
-    }
-
-    link->used = 1U;
-    link->src = src;
-    link->dst = dst;
-    link->queue = queue;
-    task->listen_count++;
-
-    return TM_OK;
-}
-
 static int tm_receive(sys_node_t dst, sys_msg_t *msg)
 {
     tm_task_entry_t *task;
-    QueueSetMemberHandle_t active;
-    tm_link_t *link;
-    uint32_t i;
 
     if (msg == NULL) {
         return TM_ERR_PARAM;
     }
 
     task = tm_find_task(dst);
-    if (task == NULL || task->set == NULL) {
+    if (task == NULL || task->queue == NULL) {
         return TM_ERR_NOT_FOUND;
     }
 
-    if (task->listen_count == 0U) {
-        return TM_ERR_NOT_FOUND;
-    }
-
-    active = xQueueSelectFromSet(task->set, 0);
-    if (active == NULL) {
+    if (xQueueReceive(task->queue, msg, 0) != pdPASS) {
         return TM_ERR_EMPTY;
     }
 
-    for (i = 0U; i < TM_MAX_LINKS; i++) {
-        if (g_links[i].used != 0U && g_links[i].queue == active) {
-            link = &g_links[i];
-            if (xQueueReceive(link->queue, msg, 0) != pdPASS) {
-                return TM_ERR_EMPTY;
-            }
-            return TM_OK;
-        }
-    }
-
-    return TM_ERR_NOT_FOUND;
+    return TM_OK;
 }
 
 static void tm_msg_loop(void *arg)
@@ -206,17 +99,9 @@ void tm_system_init(void)
     for (i = 0U; i < TM_MAX_TASK; i++) {
         g_tasks[i].id = SYS_NODE_NONE;
         g_tasks[i].task = NULL;
-        g_tasks[i].set = NULL;
-        g_tasks[i].listen_count = 0U;
+        g_tasks[i].queue = NULL;
         g_tasks[i].handler = NULL;
         g_tasks[i].handler_ctx = NULL;
-    }
-
-    for (i = 0U; i < TM_MAX_LINKS; i++) {
-        g_links[i].used = 0U;
-        g_links[i].src = SYS_NODE_NONE;
-        g_links[i].dst = SYS_NODE_NONE;
-        g_links[i].queue = NULL;
     }
 }
 
@@ -227,7 +112,7 @@ int tm_init(const tm_task_cfg_t *cfg)
     void *arg;
     uint16_t stack;
     UBaseType_t prio;
-    uint8_t i;
+    uint32_t queue_len;
     BaseType_t created;
 
     if (cfg == NULL || cfg->id == SYS_NODE_NONE || cfg->id == SYS_NODE_ISR ||
@@ -252,36 +137,15 @@ int tm_init(const tm_task_cfg_t *cfg)
         return TM_ERR_FULL;
     }
 
+    queue_len = (cfg->queue_len != 0U) ? cfg->queue_len : TM_QUEUE_LENGTH;
+
     entry->id = cfg->id;
     entry->handler = cfg->handler;
     entry->handler_ctx = cfg->handler_ctx;
-    entry->listen_count = 0U;
-
-    entry->set = xQueueCreateSet(
-        (UBaseType_t)TM_MAX_LISTEN_PER_TASK * (UBaseType_t)TM_QUEUE_LENGTH);
-    if (entry->set == NULL) {
+    entry->queue = xQueueCreate((UBaseType_t)queue_len, sizeof(sys_msg_t));
+    if (entry->queue == NULL) {
         entry->id = SYS_NODE_NONE;
         return TM_ERR_FULL;
-    }
-
-    if (cfg->listen != NULL) {
-        for (i = 0U; i < cfg->listen_count; i++) {
-            uint32_t qlen = cfg->listen[i].queue_len;
-
-            if (tm_listen_to(cfg->id,
-                             cfg->listen[i].from,
-                             qlen) != TM_OK) {
-                entry->id = SYS_NODE_NONE;
-                return TM_ERR_FULL;
-            }
-        }
-    }
-
-    if (cfg->id != SYS_NODE_ISR && tm_find_link(SYS_NODE_ISR, cfg->id) == NULL) {
-        if (tm_listen_to(cfg->id, SYS_NODE_ISR, 0U) != TM_OK) {
-            entry->id = SYS_NODE_NONE;
-            return TM_ERR_FULL;
-        }
     }
 
     stack = (cfg->stack_words != 0U) ? cfg->stack_words : TM_STACK_DEFAULT;
@@ -302,28 +166,19 @@ int tm_init(const tm_task_cfg_t *cfg)
                           prio,
                           &entry->task);
     if (created != pdPASS) {
+        vQueueDelete(entry->queue);
         entry->id = SYS_NODE_NONE;
         entry->task = NULL;
+        entry->queue = NULL;
         return TM_ERR_FULL;
     }
 
     return TM_OK;
 }
 
-int tm_listen(sys_node_t from_src, uint32_t queue_length)
-{
-    sys_node_t self = tm_self();
-
-    if (self == SYS_NODE_NONE) {
-        return TM_ERR_PARAM;
-    }
-
-    return tm_listen_to(self, from_src, queue_length);
-}
-
 int tm_send(sys_node_t to_id, sys_msg_t *msg, TickType_t timeout)
 {
-    tm_link_t *link;
+    tm_task_entry_t *dst;
     sys_node_t self;
 
     if (msg == NULL || to_id == SYS_NODE_NONE) {
@@ -335,14 +190,14 @@ int tm_send(sys_node_t to_id, sys_msg_t *msg, TickType_t timeout)
         return TM_ERR_PARAM;
     }
 
-    msg->src = (uint32_t)self;
-
-    link = tm_find_link(self, to_id);
-    if (link == NULL) {
+    dst = tm_find_task(to_id);
+    if (dst == NULL || dst->queue == NULL) {
         return TM_ERR_NOT_FOUND;
     }
 
-    if (xQueueSend(link->queue, msg, timeout) != pdPASS) {
+    msg->src = (uint32_t)self;
+
+    if (xQueueSend(dst->queue, msg, timeout) != pdPASS) {
         return TM_ERR_FULL;
     }
 
@@ -354,20 +209,20 @@ int tm_send_from_isr(sys_node_t to_id,
                      sys_msg_t *msg,
                      BaseType_t *hpw)
 {
-    tm_link_t *link;
+    tm_task_entry_t *dst;
 
     if (msg == NULL || to_id == SYS_NODE_NONE || to_id == SYS_NODE_ISR) {
         return TM_ERR_PARAM;
     }
 
-    msg->src = (uint32_t)SYS_NODE_ISR;
-
-    link = tm_find_link(SYS_NODE_ISR, to_id);
-    if (link == NULL) {
+    dst = tm_find_task(to_id);
+    if (dst == NULL || dst->queue == NULL) {
         return TM_ERR_NOT_FOUND;
     }
 
-    if (xQueueSendFromISR(link->queue, msg, hpw) != pdPASS) {
+    msg->src = (uint32_t)SYS_NODE_ISR;
+
+    if (xQueueSendFromISR(dst->queue, msg, hpw) != pdPASS) {
         return TM_ERR_FULL;
     }
 

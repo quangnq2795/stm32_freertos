@@ -12,8 +12,6 @@ extern "C" {
 #endif
 
 #define TM_MAX_TASK              16U
-#define TM_MAX_LINKS             48U
-#define TM_MAX_LISTEN_PER_TASK   8U
 #define TM_QUEUE_LENGTH          8U
 
 #define TM_STACK_DEFAULT         384U
@@ -32,12 +30,6 @@ typedef void (*tm_handler_fn)(const sys_msg_t *msg, void *ctx);
 
 typedef struct
 {
-    sys_node_t from;
-    uint16_t queue_len; /* 0 = TM_QUEUE_LENGTH */
-} tm_listen_t;
-
-typedef struct
-{
     sys_node_t id;
     const char *name;
 
@@ -52,21 +44,19 @@ typedef struct
     uint16_t stack_words;
     UBaseType_t priority;
 
-    const tm_listen_t *listen;
-    uint8_t listen_count;
+    /* Per-task inbox depth; 0 = TM_QUEUE_LENGTH. */
+    uint16_t queue_len;
 } tm_task_cfg_t;
 
 /* Call once before any tm_init (e.g. in os_init). */
 void tm_system_init(void);
 
-/* Register id, queues/listeners, and create the FreeRTOS task. */
+/* Register id, inbox queue, and create the FreeRTOS task. */
 int tm_init(const tm_task_cfg_t *cfg);
-
-int tm_listen(sys_node_t from_src, uint32_t queue_length);
 
 int tm_send(sys_node_t to_id, sys_msg_t *msg, TickType_t timeout);
 
-/* msg->src is always set to SYS_NODE_ISR. Requires dst task listen(ISR) at tm_init. */
+/* msg->src is always set to SYS_NODE_ISR. */
 int tm_send_from_isr(sys_node_t to_id,
                      sys_msg_t *msg,
                      BaseType_t *hpw);
