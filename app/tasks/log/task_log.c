@@ -9,7 +9,7 @@
 #include "taskmanager.h"
 
 #ifndef LOG_SERIAL_TX
-#define LOG_SERIAL_TX  SERIAL_PORT_2_TX
+#define LOG_SERIAL_TX  SERIAL_PORT_1_TX
 #endif
 
 #define LOG_TASK_STACK_WORDS  384U

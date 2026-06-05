@@ -12,7 +12,7 @@
 #include "taskmanager.h"
 
 #ifndef CLI_SERIAL_RX
-#define CLI_SERIAL_RX  SERIAL_PORT_2_RX
+#define CLI_SERIAL_RX  SERIAL_PORT_1_RX
 #endif
 
 #ifndef CLI_UART_RX_CHUNK
