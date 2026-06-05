@@ -34,113 +34,96 @@ static int serial_ensure_hw(uart_id_t uart)
   return SERIAL_OK;
 }
 
-int serial_tx_register(uart_id_t uart, serial_tx_t *out)
+static uint8_t serial_claimed(uart_id_t port, serial_type_t type)
 {
-  if (uart >= BSP_UART_COUNT || out == NULL) {
-    return SERIAL_ERR_PARAM;
-  }
-
-  if (s_tx_claimed[uart] != 0U) {
-    return SERIAL_ERR_BUSY;
-  }
-
-  if (serial_ensure_hw(uart) != SERIAL_OK) {
-    return SERIAL_ERR_PARAM;
-  }
-
-  s_tx_claimed[uart] = 1U;
-  out->uart = uart;
-  return SERIAL_OK;
-}
-
-int serial_rx_register(uart_id_t uart, serial_rx_isr_fn_t isr_fn, void *ctx,
-                       serial_rx_t *out)
-{
-  if (uart >= BSP_UART_COUNT || out == NULL) {
-    return SERIAL_ERR_PARAM;
-  }
-
-  if (s_rx_claimed[uart] != 0U) {
-    return SERIAL_ERR_BUSY;
-  }
-
-  if (serial_ensure_hw(uart) != SERIAL_OK) {
-    return SERIAL_ERR_PARAM;
-  }
-
-  s_rx_claimed[uart] = 1U;
-  s_rx_isr[uart] = isr_fn;
-  s_rx_ctx[uart] = ctx;
-  uart_register_event(uart, serial_uart_evt_cb);
-  out->uart = uart;
-  return SERIAL_OK;
-}
-
-void serial_tx_unregister(serial_tx_t *handle)
-{
-  if (handle == NULL || handle->uart >= BSP_UART_COUNT) {
-    return;
-  }
-
-  s_tx_claimed[handle->uart] = 0U;
-}
-
-void serial_rx_unregister(serial_rx_t *handle)
-{
-  if (handle == NULL || handle->uart >= BSP_UART_COUNT) {
-    return;
-  }
-
-  uart_id_t uart = handle->uart;
-
-  s_rx_claimed[uart] = 0U;
-  s_rx_isr[uart] = NULL;
-  s_rx_ctx[uart] = NULL;
-  uart_register_event(uart, NULL);
-}
-
-uint8_t serial_tx_is_claimed(uart_id_t uart)
-{
-  if (uart >= BSP_UART_COUNT) {
+  if (port >= BSP_UART_COUNT) {
     return 0U;
   }
 
-  return s_tx_claimed[uart];
-}
-
-uint8_t serial_rx_is_claimed(uart_id_t uart)
-{
-  if (uart >= BSP_UART_COUNT) {
-    return 0U;
+  if (type == SERIAL_TYPE_TX) {
+    return s_tx_claimed[port];
   }
 
-  return s_rx_claimed[uart];
+  return s_rx_claimed[port];
 }
 
-size_t serial_tx_write(const serial_tx_t *handle, const uint8_t *buf, size_t len)
+int serial_register(uart_id_t port, serial_type_t type, const serial_cfg_t *cfg,
+                    serial_t *out)
+{
+  if (port >= BSP_UART_COUNT || out == NULL) {
+    return SERIAL_ERR_PARAM;
+  }
+
+  if (type == SERIAL_TYPE_RX && cfg == NULL) {
+    return SERIAL_ERR_PARAM;
+  }
+
+  if (serial_claimed(port, type) != 0U) {
+    return SERIAL_ERR_BUSY;
+  }
+
+  if (serial_ensure_hw(port) != SERIAL_OK) {
+    return SERIAL_ERR_PARAM;
+  }
+
+  if (type == SERIAL_TYPE_TX) {
+    s_tx_claimed[port] = 1U;
+  } else {
+    s_rx_claimed[port] = 1U;
+    s_rx_isr[port] = cfg->isr_fn;
+    s_rx_ctx[port] = cfg->ctx;
+    uart_register_event(port, serial_uart_evt_cb);
+  }
+
+  out->port = port;
+  out->type = type;
+  return SERIAL_OK;
+}
+
+void serial_unregister(serial_t *handle)
+{
+  if (handle == NULL || handle->port >= BSP_UART_COUNT) {
+    return;
+  }
+
+  if (handle->type == SERIAL_TYPE_TX) {
+    s_tx_claimed[handle->port] = 0U;
+  } else {
+    uart_id_t port = handle->port;
+
+    s_rx_claimed[port] = 0U;
+    s_rx_isr[port] = NULL;
+    s_rx_ctx[port] = NULL;
+    uart_register_event(port, NULL);
+  }
+}
+
+size_t serial_write(const serial_t *handle, const uint8_t *buf, size_t len)
 {
   if (handle == NULL || buf == NULL || len == 0U) {
     return 0U;
   }
 
-  if (handle->uart >= BSP_UART_COUNT ||
-      s_tx_claimed[handle->uart] == 0U) {
+  if (handle->type != SERIAL_TYPE_TX ||
+      handle->port >= BSP_UART_COUNT ||
+      s_tx_claimed[handle->port] == 0U) {
     return 0U;
   }
 
-  return uart_write(handle->uart, buf, len);
+  return uart_write(handle->port, buf, len);
 }
 
-size_t serial_rx_read(const serial_rx_t *handle, uint8_t *buf, size_t max_len)
+size_t serial_read(const serial_t *handle, uint8_t *buf, size_t max_len)
 {
   if (handle == NULL || buf == NULL || max_len == 0U) {
     return 0U;
   }
 
-  if (handle->uart >= BSP_UART_COUNT ||
-      s_rx_claimed[handle->uart] == 0U) {
+  if (handle->type != SERIAL_TYPE_RX ||
+      handle->port >= BSP_UART_COUNT ||
+      s_rx_claimed[handle->port] == 0U) {
     return 0U;
   }
 
-  return uart_read(handle->uart, buf, max_len);
+  return uart_read(handle->port, buf, max_len);
 }

@@ -10,12 +10,12 @@
 #include "sys_msg.h"
 #include "taskmanager.h"
 
-#ifndef CLI_UART_RX_ID
-#define CLI_UART_RX_ID  1U
+#ifndef CLI_SERIAL_TX
+#define CLI_SERIAL_TX  SERIAL_PORT_1_TX
 #endif
 
-#ifndef CLI_UART_TX_ID
-#define CLI_UART_TX_ID  0U
+#ifndef CLI_SERIAL_RX
+#define CLI_SERIAL_RX  SERIAL_PORT_2_RX
 #endif
 
 #ifndef CLI_UART_RX_CHUNK
@@ -26,8 +26,8 @@
 #define CLI_TASK_STACK_WORDS  512U
 #define CLI_TASK_PRIO         (tskIDLE_PRIORITY + 1U)
 
-static serial_rx_t s_cli_rx;
-static serial_tx_t s_cli_tx;
+static serial_t s_cli_rx;
+static serial_t s_cli_tx;
 static uint8_t s_serial_ready;
 
 static void cli_process_line(char *line, size_t line_len);
@@ -39,15 +39,15 @@ void cli_print(const char *s)
     return;
   }
 
-  (void)serial_tx_write(&s_cli_tx, (const uint8_t *)s, strlen(s));
+  (void)serial_write(&s_cli_tx, (const uint8_t *)s, strlen(s));
 }
 
-static void cli_serial_rx_isr(uart_id_t uart, uart_event_t evt, void *ctx)
+static void cli_serial_rx_isr(uart_id_t port, uart_event_t evt, void *ctx)
 {
   sys_msg_t msg = {0};
   BaseType_t hpw = pdFALSE;
 
-  (void)uart;
+  (void)port;
   (void)ctx;
 
   if (evt != UART_EVENT_RX_AVAILABLE) {
@@ -62,13 +62,19 @@ static void cli_serial_rx_isr(uart_id_t uart, uart_event_t evt, void *ctx)
 
 static int cli_serial_setup(void)
 {
-  if (serial_tx_register(CLI_UART_TX_ID, &s_cli_tx) != SERIAL_OK) {
+  static const serial_cfg_t rx_cfg = {
+      .isr_fn = cli_serial_rx_isr,
+      .ctx = NULL,
+  };
+
+  if (serial_register(CLI_SERIAL_TX, SERIAL_TYPE_TX, NULL, &s_cli_tx) !=
+      SERIAL_OK) {
     return SERIAL_ERR_BUSY;
   }
 
-  if (serial_rx_register(CLI_UART_RX_ID, cli_serial_rx_isr, NULL, &s_cli_rx) !=
+  if (serial_register(CLI_SERIAL_RX, SERIAL_TYPE_RX, &rx_cfg, &s_cli_rx) !=
       SERIAL_OK) {
-    serial_tx_unregister(&s_cli_tx);
+    serial_unregister(&s_cli_tx);
     return SERIAL_ERR_BUSY;
   }
 
@@ -83,7 +89,7 @@ static void uart_rx_handler(void)
   uint8_t buf[CLI_UART_RX_CHUNK];
   size_t n;
 
-  while ((n = serial_rx_read(&s_cli_rx, buf, sizeof(buf))) > 0U) {
+  while ((n = serial_read(&s_cli_rx, buf, sizeof(buf))) > 0U) {
     for (size_t i = 0U; i < n; ++i) {
       uint8_t c = buf[i];
 
