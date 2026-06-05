@@ -7,8 +7,8 @@ typedef struct
     sys_node_t id;
     TaskHandle_t task;
     QueueHandle_t queue;
-    tm_handler_fn handler;
-    void *handler_ctx;
+    tm_task_ops_t ops;
+    void *ctx;
 } tm_task_entry_t;
 
 static tm_task_entry_t g_tasks[TM_MAX_TASK];
@@ -77,18 +77,20 @@ static int tm_receive(sys_node_t dst, sys_msg_t *msg)
     return TM_OK;
 }
 
-static void tm_msg_loop(void *arg)
+static void tm_default_loop(void *arg)
 {
     tm_task_entry_t *self = (tm_task_entry_t *)arg;
-    sys_msg_t msg;
 
-    for (;;) {
-        tm_wait_notif();
-        while (tm_receive(self->id, &msg) == TM_OK) {
-            if (self->handler != NULL) {
-                self->handler(&msg, self->handler_ctx);
-            }
-        }
+    if (self->ops.task_init != NULL) {
+        self->ops.task_init(self->ctx);
+    }
+
+    if (self->ops.task_handler != NULL) {
+        self->ops.task_handler(self->ctx);
+    }
+
+    if (self->ops.task_uninit != NULL) {
+        self->ops.task_uninit(self->ctx);
     }
 }
 
@@ -100,16 +102,16 @@ void tm_system_init(void)
         g_tasks[i].id = SYS_NODE_NONE;
         g_tasks[i].task = NULL;
         g_tasks[i].queue = NULL;
-        g_tasks[i].handler = NULL;
-        g_tasks[i].handler_ctx = NULL;
+        g_tasks[i].ops.task_init = NULL;
+        g_tasks[i].ops.task_uninit = NULL;
+        g_tasks[i].ops.task_handler = NULL;
+        g_tasks[i].ctx = NULL;
     }
 }
 
 int tm_init(const tm_task_cfg_t *cfg)
 {
     tm_task_entry_t *entry;
-    TaskFunction_t fn;
-    void *arg;
     uint16_t stack;
     UBaseType_t prio;
     uint32_t queue_len;
@@ -120,11 +122,7 @@ int tm_init(const tm_task_cfg_t *cfg)
         return TM_ERR_PARAM;
     }
 
-    if ((cfg->handler != NULL) && (cfg->entry != NULL)) {
-        return TM_ERR_PARAM;
-    }
-
-    if ((cfg->handler == NULL) && (cfg->entry == NULL)) {
+    if (cfg->ops.task_handler == NULL) {
         return TM_ERR_PARAM;
     }
 
@@ -140,8 +138,8 @@ int tm_init(const tm_task_cfg_t *cfg)
     queue_len = (cfg->queue_len != 0U) ? cfg->queue_len : TM_QUEUE_LENGTH;
 
     entry->id = cfg->id;
-    entry->handler = cfg->handler;
-    entry->handler_ctx = cfg->handler_ctx;
+    entry->ops = cfg->ops;
+    entry->ctx = cfg->ctx;
     entry->queue = xQueueCreate((UBaseType_t)queue_len, sizeof(sys_msg_t));
     if (entry->queue == NULL) {
         entry->id = SYS_NODE_NONE;
@@ -151,18 +149,10 @@ int tm_init(const tm_task_cfg_t *cfg)
     stack = (cfg->stack_words != 0U) ? cfg->stack_words : TM_STACK_DEFAULT;
     prio = (cfg->priority != 0U) ? cfg->priority : TM_PRIO_DEFAULT;
 
-    if (cfg->handler != NULL) {
-        fn = tm_msg_loop;
-        arg = entry;
-    } else {
-        fn = cfg->entry;
-        arg = cfg->entry_arg;
-    }
-
-    created = xTaskCreate(fn,
+    created = xTaskCreate(tm_default_loop,
                           cfg->name,
                           (configSTACK_DEPTH_TYPE)stack,
-                          arg,
+                          entry,
                           prio,
                           &entry->task);
     if (created != pdPASS) {
@@ -170,6 +160,10 @@ int tm_init(const tm_task_cfg_t *cfg)
         entry->id = SYS_NODE_NONE;
         entry->task = NULL;
         entry->queue = NULL;
+        entry->ops.task_init = NULL;
+        entry->ops.task_uninit = NULL;
+        entry->ops.task_handler = NULL;
+        entry->ctx = NULL;
         return TM_ERR_FULL;
     }
 

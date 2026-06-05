@@ -6,13 +6,10 @@
 #include <string.h>
 
 #include "cli_cmd.h"
+#include "log.h"
 #include "serial.h"
 #include "sys_msg.h"
 #include "taskmanager.h"
-
-#ifndef CLI_SERIAL_TX
-#define CLI_SERIAL_TX  SERIAL_PORT_1_TX
-#endif
 
 #ifndef CLI_SERIAL_RX
 #define CLI_SERIAL_RX  SERIAL_PORT_2_RX
@@ -27,20 +24,10 @@
 #define CLI_TASK_PRIO         (tskIDLE_PRIORITY + 1U)
 
 static serial_t s_cli_rx;
-static serial_t s_cli_tx;
 static uint8_t s_serial_ready;
 
 static void cli_process_line(char *line, size_t line_len);
-static void cli_msg_handler(const sys_msg_t *msg);
 
-void cli_print(const char *s)
-{
-  if (s == NULL || s_serial_ready == 0U) {
-    return;
-  }
-
-  (void)serial_write(&s_cli_tx, (const uint8_t *)s, strlen(s));
-}
 
 static void cli_serial_rx_isr(uart_id_t port, uart_event_t evt, void *ctx)
 {
@@ -67,14 +54,8 @@ static int cli_serial_setup(void)
       .ctx = NULL,
   };
 
-  if (serial_register(CLI_SERIAL_TX, SERIAL_TYPE_TX, NULL, &s_cli_tx) !=
-      SERIAL_OK) {
-    return SERIAL_ERR_BUSY;
-  }
-
   if (serial_register(CLI_SERIAL_RX, SERIAL_TYPE_RX, &rx_cfg, &s_cli_rx) !=
       SERIAL_OK) {
-    serial_unregister(&s_cli_tx);
     return SERIAL_ERR_BUSY;
   }
 
@@ -108,27 +89,35 @@ static void uart_rx_handler(void)
   }
 }
 
-static void cli_msg_handler(const sys_msg_t *msg)
+static void cli_task_init(void *ctx)
 {
-  if (msg == NULL) {
-    return;
-  }
+  (void)ctx;
 
-  if (msg->opcode == CLI_OPCODE_RX) {
-    uart_rx_handler();
+  if (cli_serial_setup() != SERIAL_OK) {
+    return;
   }
 }
 
-static void task_cli(void *argument)
+static void cli_task_uninit(void *ctx)
+{
+  (void)ctx;
+
+  s_serial_ready = 0U;
+  serial_unregister(&s_cli_rx);
+}
+
+static void cli_task_handler(void *ctx)
 {
   sys_msg_t msg;
 
-  (void)argument;
+  (void)ctx;
 
   for (;;) {
     tm_wait_notif();
     while (tm_recv(&msg) == TM_OK) {
-      cli_msg_handler(&msg);
+      if (msg.opcode == CLI_OPCODE_RX) {
+        uart_rx_handler();
+      }
     }
   }
 }
@@ -149,8 +138,8 @@ static void cmd_help(int argc, char **argv)
   (void)argc;
   (void)argv;
 
-  cli_print("Commands:\r\n");
-  cli_print("  help\r\n");
+  log_printf("Commands:");
+  log_printf("  help");
 }
 
 static void cli_process_line(char *line, size_t line_len)
@@ -192,7 +181,7 @@ static void cli_process_line(char *line, size_t line_len)
     }
   }
 
-  cli_print("Unknown command\r\n");
+  log_printf("Unknown command");
 }
 
 void task_cli_create(void)
@@ -202,16 +191,16 @@ void task_cli_create(void)
   const tm_task_cfg_t cfg = {
       .id = SYS_NODE_CLI,
       .name = "cli",
-      .entry = task_cli,
+      .ops = {
+          .task_init = cli_task_init,
+          .task_uninit = cli_task_uninit,
+          .task_handler = cli_task_handler,
+      },
       .stack_words = CLI_TASK_STACK_WORDS,
       .priority = CLI_TASK_PRIO,
   };
 
   if (s_started != 0U) {
-    return;
-  }
-
-  if (cli_serial_setup() != SERIAL_OK) {
     return;
   }
 

@@ -43,34 +43,38 @@ static void ir_handle_tx(const sys_msg_t *msg)
                        (uint8_t)msg->u.arg.param3);
 }
 
-static void ir_msg_handler(const sys_msg_t *msg)
+static void ir_task_init(void *ctx)
 {
-  if (msg == NULL) {
-    return;
-  }
+  (void)ctx;
 
-  switch (msg->opcode) {
-  case IR_OPCODE_RX:
-    ir_handle_rx(msg);
-    break;
-  case IR_OPCODE_TX:
-    ir_handle_tx(msg);
-    break;
-  default:
-    break;
-  }
+  ir_rx_init_all();
+  ir_tx_init_all();
 }
 
-static void task_ir(void *arg)
+static void ir_task_uninit(void *ctx)
+{
+  (void)ctx;
+}
+
+static void ir_task_handler(void *ctx)
 {
   sys_msg_t msg;
 
-  (void)arg;
+  (void)ctx;
 
   for (;;) {
     tm_wait_notif();
     while (tm_recv(&msg) == TM_OK) {
-      ir_msg_handler(&msg);
+      switch (msg.opcode) {
+      case IR_OPCODE_RX:
+        ir_handle_rx(&msg);
+        break;
+      case IR_OPCODE_TX:
+        ir_handle_tx(&msg);
+        break;
+      default:
+        break;
+      }
     }
   }
 }
@@ -82,7 +86,11 @@ void task_ir_create(void)
   const tm_task_cfg_t cfg = {
       .id = SYS_NODE_IR,
       .name = "ir",
-      .entry = task_ir,
+      .ops = {
+          .task_init = ir_task_init,
+          .task_uninit = ir_task_uninit,
+          .task_handler = ir_task_handler,
+      },
       .stack_words = IR_TASK_STACK_WORDS,
       .priority = IR_TASK_PRIO,
   };
@@ -90,9 +98,7 @@ void task_ir_create(void)
   if (s_started != 0U) {
     return;
   }
-  s_started = 1U;
 
-  ir_rx_init_all();
-  ir_tx_init_all();
+  s_started = 1U;
   (void)tm_init(&cfg);
 }

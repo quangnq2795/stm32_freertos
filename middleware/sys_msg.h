@@ -21,6 +21,7 @@ typedef enum
     SYS_NODE_MOTOR,
     SYS_NODE_CONTROL,
     SYS_NODE_IR,
+    SYS_NODE_LOG,
 } sys_node_t;
 
 /* SYS_NODE_CLI opcodes (task_cli). */
@@ -29,6 +30,9 @@ typedef enum
 /* SYS_NODE_IR opcodes (task_ir). */
 #define IR_OPCODE_RX  0U
 #define IR_OPCODE_TX  1U
+
+/* SYS_NODE_LOG opcodes (task_log). */
+#define LOG_OPCODE_WRITE  0U /* u.buf: heap log line; task writes then vPortFree(data). */
 
 /* IR_OPCODE_RX: arg.param1 = ir_rx_channel_id_t */
 /* IR_OPCODE_TX: arg.param1 = ir_tx channel, param2 = NEC address, param3 = NEC command,

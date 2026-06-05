@@ -26,20 +26,24 @@ typedef enum
     TM_ERR_NOT_FOUND = -4,
 } tm_status_t;
 
-typedef void (*tm_handler_fn)(const sys_msg_t *msg, void *ctx);
+typedef void (*tm_task_init_fn)(void *ctx);
+typedef void (*tm_task_uninit_fn)(void *ctx);
+typedef void (*tm_task_handler_fn)(void *ctx);
+
+typedef struct
+{
+    tm_task_init_fn task_init;
+    tm_task_uninit_fn task_uninit;
+    tm_task_handler_fn task_handler;
+} tm_task_ops_t;
 
 typedef struct
 {
     sys_node_t id;
     const char *name;
 
-    /* Message-driven task: handler set, entry NULL. */
-    tm_handler_fn handler;
-    void *handler_ctx;
-
-    /* Custom task body (e.g. CLI): entry set, handler NULL. */
-    TaskFunction_t entry;
-    void *entry_arg;
+    tm_task_ops_t ops;
+    void *ctx;
 
     uint16_t stack_words;
     UBaseType_t priority;
