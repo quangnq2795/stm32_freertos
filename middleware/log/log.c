@@ -11,7 +11,7 @@
 #include "taskmanager.h"
 
 #ifndef LOG_SERIAL_TX
-#define LOG_SERIAL_TX  SERIAL_PORT_1_TX
+#define LOG_SERIAL_TX  SERIAL_PORT_2_TX
 #endif
 
 static serial_t s_log_tx;
