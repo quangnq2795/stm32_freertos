@@ -14,6 +14,6 @@ int log_init(void);
 void log_uninit(void);
 void log_process(void);
 
-/* Format log line (%s %d %u %x %X %c %%), queue heap buffer, notify log task.
+/* Format log line (%s %d %u %x %X %02X %c %%), queue heap buffer, notify log task.
  * Appends "\r\n". */
 void log_printf(const char *fmt, ...);

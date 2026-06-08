@@ -41,25 +41,35 @@ static size_t log_fmt_str(char *out, size_t cap, size_t pos, const char *s)
 }
 
 static size_t log_fmt_uint(char *out, size_t cap, size_t pos, uint32_t val,
-                           uint32_t base, uint8_t uppercase)
+                           uint32_t base, uint8_t uppercase, uint32_t width,
+                           uint8_t zero_pad)
 {
   char tmp[10];
   uint8_t n = 0U;
+  uint32_t i;
 
   if (val == 0U) {
-    return log_fmt_putc(out, cap, pos, '0');
+    tmp[n++] = '0';
+  } else {
+    while (val > 0U) {
+      uint32_t digit = val % base;
+
+      if (digit < 10U) {
+        tmp[n++] = (char)('0' + digit);
+      } else {
+        tmp[n++] = (char)((uppercase != 0U) ? ('A' + digit - 10U)
+                                            : ('a' + digit - 10U));
+      }
+      val /= base;
+    }
   }
 
-  while (val > 0U) {
-    uint32_t digit = val % base;
+  if (width > (uint32_t)n) {
+    char pad = (zero_pad != 0U) ? '0' : ' ';
 
-    if (digit < 10U) {
-      tmp[n++] = (char)('0' + digit);
-    } else {
-      tmp[n++] = (char)((uppercase != 0U) ? ('A' + digit - 10U)
-                                          : ('a' + digit - 10U));
+    for (i = 0U; i < (width - (uint32_t)n); i++) {
+      pos = log_fmt_putc(out, cap, pos, pad);
     }
-    val /= base;
   }
 
   while (n > 0U) {
@@ -84,6 +94,19 @@ static int log_vformat(char *out, size_t cap, const char *fmt, va_list ap)
     }
 
     fmt++;
+
+    uint8_t zero_pad = 0U;
+    uint32_t width = 0U;
+
+    if (*fmt == '0') {
+      zero_pad = 1U;
+      fmt++;
+    }
+    while ((*fmt >= '0') && (*fmt <= '9')) {
+      width = (width * 10U) + (uint32_t)(*fmt - '0');
+      fmt++;
+    }
+
     if (*fmt == '\0') {
       break;
     }
@@ -97,20 +120,25 @@ static int log_vformat(char *out, size_t cap, const char *fmt, va_list ap)
 
       if (v < 0) {
         pos = log_fmt_putc(out, cap, pos, '-');
-        pos = log_fmt_uint(out, cap, pos, (uint32_t)(-(v + 1)) + 1U, 10U, 0U);
+        pos = log_fmt_uint(out, cap, pos, (uint32_t)(-(v + 1)) + 1U, 10U, 0U,
+                           width, zero_pad);
       } else {
-        pos = log_fmt_uint(out, cap, pos, (uint32_t)v, 10U, 0U);
+        pos = log_fmt_uint(out, cap, pos, (uint32_t)v, 10U, 0U, width,
+                           zero_pad);
       }
       break;
     }
     case 'u':
-      pos = log_fmt_uint(out, cap, pos, va_arg(ap, unsigned int), 10U, 0U);
+      pos = log_fmt_uint(out, cap, pos, va_arg(ap, unsigned int), 10U, 0U,
+                         width, zero_pad);
       break;
     case 'x':
-      pos = log_fmt_uint(out, cap, pos, va_arg(ap, unsigned int), 16U, 0U);
+      pos = log_fmt_uint(out, cap, pos, va_arg(ap, unsigned int), 16U, 0U,
+                         width, zero_pad);
       break;
     case 'X':
-      pos = log_fmt_uint(out, cap, pos, va_arg(ap, unsigned int), 16U, 1U);
+      pos = log_fmt_uint(out, cap, pos, va_arg(ap, unsigned int), 16U, 1U,
+                         width, zero_pad);
       break;
     case 'c':
       pos = log_fmt_putc(out, cap, pos, (char)va_arg(ap, int));
