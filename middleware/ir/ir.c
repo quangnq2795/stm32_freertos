@@ -41,6 +41,43 @@ static void ir_handle_tx(const sys_msg_t *msg)
                        (uint8_t)msg->u.arg.param3);
 }
 
+int ir_send_nec(ir_tx_channel_id_t channel,
+                uint8_t address,
+                uint8_t command,
+                TickType_t timeout)
+{
+  sys_msg_t msg = {0};
+
+  msg.opcode = IR_OPCODE_TX;
+  msg.u.arg.param1 = (uint32_t)channel;
+  msg.u.arg.param2 = (uint32_t)address;
+  msg.u.arg.param3 = (uint32_t)command;
+  msg.u.arg.param4 = 0U;
+
+  if (tm_send(SYS_NODE_IR, &msg, timeout) != TM_OK) {
+    return IR_ERR_SEND;
+  }
+
+  return IR_OK;
+}
+
+int ir_send_nec_repeat(ir_tx_channel_id_t channel, TickType_t timeout)
+{
+  sys_msg_t msg = {0};
+
+  msg.opcode = IR_OPCODE_TX;
+  msg.u.arg.param1 = (uint32_t)channel;
+  msg.u.arg.param2 = 0U;
+  msg.u.arg.param3 = 0U;
+  msg.u.arg.param4 = 1U;
+
+  if (tm_send(SYS_NODE_IR, &msg, timeout) != TM_OK) {
+    return IR_ERR_SEND;
+  }
+
+  return IR_OK;
+}
+
 int ir_init(void)
 {
   ir_rx_init_all();
