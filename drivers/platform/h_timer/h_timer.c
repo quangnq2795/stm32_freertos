@@ -65,6 +65,7 @@ static void h_timer_oc_ensure(void)
 void h_timer_schedule(uint32_t deadline_us)
 {
   h_timer_oc_ensure();
+  __HAL_TIM_CLEAR_FLAG(&s_htim, TIM_FLAG_CC1);
   __HAL_TIM_SET_COMPARE(&s_htim, BSP_H_TIMER_CHANNEL, deadline_us);
   (void)HAL_TIM_OC_Start_IT(&s_htim, BSP_H_TIMER_CHANNEL);
 }
@@ -85,11 +86,7 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
     return;
   }
 
-  if (__HAL_TIM_GET_FLAG(htim, TIM_FLAG_CC1) == RESET) {
-    return;
-  }
-
-  __HAL_TIM_CLEAR_FLAG(htim, TIM_FLAG_CC1);
+  /* HAL_TIM_IRQHandler clears CC1 before invoking this callback. */
   (void)HAL_TIM_OC_Stop_IT(htim, BSP_H_TIMER_CHANNEL);
 
   if (s_expire_hook != NULL) {
