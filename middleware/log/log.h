@@ -7,8 +7,12 @@
 #define LOG_LINE_MAX  128U
 #endif
 
-void log_init(void);
-void log_set_ready(uint8_t ready);
+#define LOG_OK           0
+#define LOG_ERR_BUSY    -2
+
+int log_init(void);
+void log_uninit(void);
+void log_process(void);
 
 /* Format log line (%s %d %u %x %X %c %%), queue heap buffer, notify log task.
  * Appends "\r\n". */

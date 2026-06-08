@@ -31,7 +31,7 @@ typedef enum
 #define IR_OPCODE_RX  0U
 #define IR_OPCODE_TX  1U
 
-/* SYS_NODE_LOG opcodes (task_log). */
+/* SYS_NODE_LOG opcodes (log middleware). */
 #define LOG_OPCODE_WRITE  0U /* u.buf: heap log line; task writes then vPortFree(data). */
 
 /* IR_OPCODE_RX: arg.param1 = ir_rx_channel_id_t */

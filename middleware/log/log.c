@@ -6,20 +6,16 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "serial.h"
 #include "sys_msg.h"
 #include "taskmanager.h"
 
+#ifndef LOG_SERIAL_TX
+#define LOG_SERIAL_TX  SERIAL_PORT_1_TX
+#endif
+
+static serial_t s_log_tx;
 static uint8_t s_ready;
-
-void log_init(void)
-{
-  s_ready = 0U;
-}
-
-void log_set_ready(uint8_t ready)
-{
-  s_ready = ready;
-}
 
 static size_t log_fmt_putc(char *out, size_t cap, size_t pos, char c)
 {
@@ -150,6 +146,66 @@ static void log_post(char *data, size_t len)
 
   if (tm_send(SYS_NODE_LOG, &msg, pdMS_TO_TICKS(10)) != TM_OK) {
     vPortFree(data);
+  }
+}
+
+static void log_handle_write(const sys_msg_t *msg)
+{
+  void *data;
+  uint32_t len;
+
+  if (msg == NULL) {
+    return;
+  }
+
+  data = msg->u.buf.data;
+  len = msg->u.buf.lenght;
+
+  if (data != NULL && len > 0U) {
+    (void)serial_write(&s_log_tx, data, (size_t)len);
+  }
+
+  if (data != NULL) {
+    vPortFree(data);
+  }
+}
+
+int log_init(void)
+{
+  if (s_ready != 0U) {
+    return LOG_OK;
+  }
+
+  if (serial_register(LOG_SERIAL_TX, SERIAL_TYPE_TX, NULL, &s_log_tx) !=
+      SERIAL_OK) {
+    return LOG_ERR_BUSY;
+  }
+
+  s_ready = 1U;
+  return LOG_OK;
+}
+
+void log_uninit(void)
+{
+  if (s_ready == 0U) {
+    return;
+  }
+
+  s_ready = 0U;
+  serial_unregister(&s_log_tx);
+}
+
+void log_process(void)
+{
+  sys_msg_t msg;
+
+  for (;;) {
+    tm_wait_notif();
+    while (tm_recv(&msg) == TM_OK) {
+      if (msg.opcode == LOG_OPCODE_WRITE) {
+        log_handle_write(&msg);
+      }
+    }
   }
 }
 
