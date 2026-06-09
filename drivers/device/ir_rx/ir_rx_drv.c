@@ -15,6 +15,7 @@ typedef struct
   volatile uint32_t last_edge_tick_us;
   ir_rx_event_fn_t event_fn;
   int idle_timer_id;
+  int is_new_frame;
 } ir_rx_channel_runtime_t;
 
 static ir_rx_hw_channel_t s_hw_channels[BSP_IR_RX_COUNT] = BSP_IR_RX_DESCS;
@@ -55,6 +56,8 @@ static void ir_rx_drv_idle_timer_fired(void *ctx)
   if (s_channel_rt[channel].pulse_count == 0U) {
     return;
   }
+
+  s_channel_rt[channel].is_new_frame = 1;
 
   if (s_channel_rt[channel].event_fn != NULL) {
     s_channel_rt[channel].event_fn(channel, IR_RX_EVT_BURST_READY);
@@ -102,13 +105,24 @@ static void ir_rx_drv_push_pulse_width(ir_rx_channel_id_t channel, uint16_t widt
 
 void ir_rx_drv_on_gpio_edge(ir_rx_channel_id_t channel, uint16_t gpio_pin)
 {
+  uint32_t now_us;
+  uint32_t delta_us;
+
   if (channel >= BSP_IR_RX_COUNT ||
       gpio_pin != s_hw_channels[channel].hw.gpio_pin) {
     return;
   }
 
-  uint32_t now_us = ir_rx_time_us();
-  uint32_t delta_us = now_us - s_channel_rt[channel].last_edge_tick_us;
+  now_us = ir_rx_time_us();
+
+  if (s_channel_rt[channel].is_new_frame != 0) {
+    s_channel_rt[channel].is_new_frame = 0;
+    s_channel_rt[channel].last_edge_tick_us = now_us;
+    ir_rx_drv_idle_timer_arm(channel);
+    return;
+  }
+
+  delta_us = now_us - s_channel_rt[channel].last_edge_tick_us;
   s_channel_rt[channel].last_edge_tick_us = now_us;
 
   if (delta_us > 0U && delta_us <= 0xFFFFU) {
@@ -141,6 +155,7 @@ void ir_rx_drv_init(ir_rx_channel_id_t channel)
   s_channel_rt[channel].last_edge_tick_us = 0U;
   s_channel_rt[channel].event_fn = NULL;
   s_channel_rt[channel].idle_timer_id = H_SOFT_TIMER_INVALID_ID;
+  s_channel_rt[channel].is_new_frame = 1;
   ir_rx_drv_idle_timer_disarm(channel);
 
   if (channel == 0U) {
@@ -207,16 +222,10 @@ size_t ir_rx_drv_read_buffered_pulses(ir_rx_channel_id_t channel, uint16_t *out,
 
   (void)memcpy(out, s_channel_rt[channel].pulse_buf,
                read_count * sizeof(uint16_t));
+  s_channel_rt[channel].pulse_count = 0U;
+  s_channel_rt[channel].is_new_frame = 1;
 
-  if (read_count < available) {
-    size_t remaining = available - read_count;
-    (void)memmove(&s_channel_rt[channel].pulse_buf[0],
-                  &s_channel_rt[channel].pulse_buf[read_count],
-                  remaining * sizeof(uint16_t));
-    s_channel_rt[channel].pulse_count = (uint16_t)remaining;
-  } else {
-    s_channel_rt[channel].pulse_count = 0U;
-  }
+
 
   return read_count;
 }
@@ -228,6 +237,7 @@ void ir_rx_drv_flush_buffer(ir_rx_channel_id_t channel)
   }
 
   s_channel_rt[channel].pulse_count = 0U;
+  s_channel_rt[channel].is_new_frame = 1;
   ir_rx_drv_idle_timer_disarm(channel);
 }
 

@@ -15,6 +15,7 @@ static void ir_on_frame(ir_rx_channel_id_t channel, const ir_rx_nec_frame_t *fra
   (void)channel;
 
   if (frame->is_repeat != 0U) {
+    log_printf("IR repeat");
     return;
   }
 

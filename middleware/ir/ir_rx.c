@@ -5,6 +5,7 @@
 
 #include "ir_rx_drv.h"
 #include "ir_rx_nec.h"
+#include "log.h"
 #include "slot_queue.h"
 #include "sys_msg.h"
 #include "taskmanager.h"
@@ -81,6 +82,69 @@ void ir_rx_init_all(void)
   }
 }
 
+#define IR_RX_LOG_PULSES_PER_LINE  8U
+
+static void ir_rx_log_pulse_widths(ir_rx_channel_id_t channel,
+                                   const uint16_t *pulses, uint16_t count)
+{
+  uint16_t i = 0U;
+
+  log_printf("IR RX ch=%u n=%u us", (unsigned int)channel, (unsigned int)count);
+
+  while (i < count) {
+    uint16_t n = count - i;
+
+    if (n > IR_RX_LOG_PULSES_PER_LINE) {
+      n = IR_RX_LOG_PULSES_PER_LINE;
+    }
+
+    switch (n) {
+      case 8U:
+        log_printf("  %u %u %u %u %u %u %u %u",
+                   (unsigned int)pulses[i], (unsigned int)pulses[i + 1U],
+                   (unsigned int)pulses[i + 2U], (unsigned int)pulses[i + 3U],
+                   (unsigned int)pulses[i + 4U], (unsigned int)pulses[i + 5U],
+                   (unsigned int)pulses[i + 6U], (unsigned int)pulses[i + 7U]);
+        break;
+      case 7U:
+        log_printf("  %u %u %u %u %u %u %u", (unsigned int)pulses[i],
+                   (unsigned int)pulses[i + 1U], (unsigned int)pulses[i + 2U],
+                   (unsigned int)pulses[i + 3U], (unsigned int)pulses[i + 4U],
+                   (unsigned int)pulses[i + 5U], (unsigned int)pulses[i + 6U]);
+        break;
+      case 6U:
+        log_printf("  %u %u %u %u %u %u", (unsigned int)pulses[i],
+                   (unsigned int)pulses[i + 1U], (unsigned int)pulses[i + 2U],
+                   (unsigned int)pulses[i + 3U], (unsigned int)pulses[i + 4U],
+                   (unsigned int)pulses[i + 5U]);
+        break;
+      case 5U:
+        log_printf("  %u %u %u %u %u", (unsigned int)pulses[i],
+                   (unsigned int)pulses[i + 1U], (unsigned int)pulses[i + 2U],
+                   (unsigned int)pulses[i + 3U], (unsigned int)pulses[i + 4U]);
+        break;
+      case 4U:
+        log_printf("  %u %u %u %u", (unsigned int)pulses[i],
+                   (unsigned int)pulses[i + 1U], (unsigned int)pulses[i + 2U],
+                   (unsigned int)pulses[i + 3U]);
+        break;
+      case 3U:
+        log_printf("  %u %u %u", (unsigned int)pulses[i],
+                   (unsigned int)pulses[i + 1U], (unsigned int)pulses[i + 2U]);
+        break;
+      case 2U:
+        log_printf("  %u %u", (unsigned int)pulses[i],
+                   (unsigned int)pulses[i + 1U]);
+        break;
+      default:
+        log_printf("  %u", (unsigned int)pulses[i]);
+        break;
+    }
+
+    i += n;
+  }
+}
+
 static int ir_rx_try_read_burst(ir_rx_channel_id_t channel, ir_rx_burst_t *out)
 {
   if (channel >= BSP_IR_RX_COUNT || out == NULL) {
@@ -90,6 +154,8 @@ static int ir_rx_try_read_burst(ir_rx_channel_id_t channel, ir_rx_burst_t *out)
   if (slot_queue_try_pop(&s_burst_queue[channel], out) != SLOT_QUEUE_OK) {
     return IR_RX_ERR_EMPTY;
   }
+
+  ir_rx_log_pulse_widths(channel, out->pulses, out->count);
 
   return IR_RX_OK;
 }

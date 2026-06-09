@@ -16,7 +16,7 @@
 #endif
 
 #ifndef UART_TX_RING_SIZE
-#define UART_TX_RING_SIZE 256U
+#define UART_TX_RING_SIZE 512U
 #endif
 
 /* Max bytes per HAL_UART_Transmit_IT chunk (scratch in uart.c). */

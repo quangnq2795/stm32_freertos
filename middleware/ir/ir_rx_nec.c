@@ -10,7 +10,7 @@
 #define NEC_REPEAT_MARK_US   9000U
 #define NEC_REPEAT_SPACE_US  2250U
 
-#define NEC_TOL_PCT  25U
+#define NEC_TOL_PCT  50U
 
 static uint8_t nec_pulse_matches(uint16_t value_us, uint16_t target_us)
 {
@@ -49,7 +49,7 @@ static int nec_decode_data_bits(const uint16_t *pulse_widths_us, size_t start_id
 int ir_rx_nec_decode(const uint16_t *pulse_widths_us, size_t pulse_count,
                      ir_rx_nec_frame_t *out)
 {
-  if (pulse_widths_us == NULL || out == NULL || pulse_count < 4U) {
+  if (pulse_widths_us == NULL || out == NULL || pulse_count < 3U) {
     return -1;
   }
 

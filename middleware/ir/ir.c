@@ -3,6 +3,7 @@
 #include "bsp_ir_tx_cfg.h"
 #include "ir_rx.h"
 #include "ir_tx.h"
+#include "log.h"
 #include "sys_msg.h"
 #include "taskmanager.h"
 
@@ -17,7 +18,24 @@ static void ir_handle_rx(const sys_msg_t *msg)
     return;
   }
 
-  while (ir_rx_try_read_nec(channel, &frame) != IR_RX_ERR_EMPTY) {
+  for (;;) {
+    int rc = ir_rx_try_read_nec(channel, &frame);
+
+    if (rc == IR_RX_ERR_EMPTY) {
+      break;
+    }
+    if (rc == IR_RX_ERR_PARAM) {
+      log_printf("IR RX ch=%u err=param", (unsigned int)channel);
+      break;
+    }
+    if (rc == IR_RX_ERR_DECODE) {
+      log_printf("IR RX ch=%u err=decode", (unsigned int)channel);
+      continue;
+    }
+    if (rc != IR_RX_OK) {
+      break;
+    }
+
     if (s_rx_cb != NULL) {
       s_rx_cb(channel, &frame);
     }
