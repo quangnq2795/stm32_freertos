@@ -190,7 +190,21 @@ static void log_handle_write(const sys_msg_t *msg)
   len = msg->u.buf.lenght;
 
   if (data != NULL && len > 0U) {
-    (void)serial_write(&s_log_tx, data, (size_t)len);
+    const uint8_t *p = (const uint8_t *)data;
+    size_t total = (size_t)len;
+    size_t off = 0U;
+
+    while (off < total) {
+      size_t n = serial_write(&s_log_tx, p + off, total - off);
+
+      if (n > 0U) {
+        off += n;
+      }
+
+      if (off < total) {
+        vTaskDelay(pdMS_TO_TICKS(50));
+      }
+    }
   }
 
   if (data != NULL) {
