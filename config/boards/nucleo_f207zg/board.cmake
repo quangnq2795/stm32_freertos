@@ -10,6 +10,7 @@ set(BOARD_SOURCES
   ${CMAKE_SOURCE_DIR}/drivers/hal_override.c
   ${CMAKE_SOURCE_DIR}/drivers/platform/clk/clk.c
   ${CMAKE_SOURCE_DIR}/drivers/platform/uart/uart.c
+  ${CMAKE_SOURCE_DIR}/drivers/platform/i2c/i2c.c
   ${CMAKE_SOURCE_DIR}/drivers/platform/h_timer/h_timer.c
   ${CMAKE_SOURCE_DIR}/middleware/h_soft_timer/h_soft_timer.c
   ${CMAKE_SOURCE_DIR}/drivers/device/led/led.c
@@ -27,6 +28,7 @@ set(BOARD_INCLUDE_DIRS
   ${CMAKE_SOURCE_DIR}/drivers
   ${CMAKE_SOURCE_DIR}/drivers/platform/clk
   ${CMAKE_SOURCE_DIR}/drivers/platform/uart
+  ${CMAKE_SOURCE_DIR}/drivers/platform/i2c
   ${CMAKE_SOURCE_DIR}/drivers/platform/h_timer
   ${CMAKE_SOURCE_DIR}/drivers/device/led
   ${CMAKE_SOURCE_DIR}/drivers/device/ir_rx

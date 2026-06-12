@@ -13,6 +13,7 @@ extern "C" {
 #define HAL_FLASH_MODULE_ENABLED
 #define HAL_UART_MODULE_ENABLED
 #define HAL_TIM_MODULE_ENABLED
+#define HAL_I2C_MODULE_ENABLED
 #define HAL_EXTI_MODULE_ENABLED
 
 #define HSE_VALUE    ((uint32_t)8000000U)
@@ -42,6 +43,7 @@ extern "C" {
 #include "stm32f2xx_hal_flash.h"
 #include "stm32f2xx_hal_uart.h"
 #include "stm32f2xx_hal_tim.h"
+#include "stm32f2xx_hal_i2c.h"
 #include "stm32f2xx_hal_exti.h"
 
 #ifdef __cplusplus

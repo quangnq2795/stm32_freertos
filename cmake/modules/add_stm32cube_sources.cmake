@@ -32,6 +32,7 @@ function(add_stm32cube_sources target)
     ${HAL_DIR}/src/${HAL_PREFIX}_uart.c
     ${HAL_DIR}/src/${HAL_PREFIX}_tim.c
     ${HAL_DIR}/src/${HAL_PREFIX}_tim_ex.c
+    ${HAL_DIR}/src/${HAL_PREFIX}_i2c.c
     ${HAL_DIR}/src/${HAL_PREFIX}_exti.c
   )
 
