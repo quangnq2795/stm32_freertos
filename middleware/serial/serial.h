@@ -32,7 +32,7 @@ typedef struct
 
 /*
  * Claim exclusive TX or RX on a serial port (SERIAL_PORT_N_TX / SERIAL_PORT_N_RX).
- * cfg: required for SERIAL_TYPE_RX (isr_fn may be NULL); ignored for TX (pass NULL).
+ * cfg: required (isr_fn may be NULL; TX uses isr_fn for UART_EVENT_TX_EMPTY).
  * Returns SERIAL_ERR_BUSY if that direction is already registered.
  */
 int serial_register(uart_id_t port, serial_type_t type, const serial_cfg_t *cfg,

@@ -16,6 +16,24 @@
 
 static serial_t s_log_tx;
 static uint8_t s_ready;
+static volatile uint8_t s_tx_ready;
+static void *s_tx_buf;
+
+static void log_tx_isr(uart_id_t port, uart_event_t evt, void *ctx)
+{
+  BaseType_t hpw = pdFALSE;
+
+  (void)port;
+  (void)ctx;
+
+  if (evt != UART_EVENT_TX_EMPTY) {
+    return;
+  }
+
+  s_tx_ready = 1U;
+  tm_noti_from_isr(SYS_NODE_LOG, &hpw);
+  portYIELD_FROM_ISR(hpw);
+}
 
 static size_t log_fmt_putc(char *out, size_t cap, size_t pos, char c)
 {
@@ -190,20 +208,11 @@ static void log_handle_write(const sys_msg_t *msg)
   len = msg->u.buf.lenght;
 
   if (data != NULL && len > 0U) {
-    const uint8_t *p = (const uint8_t *)data;
-    size_t total = (size_t)len;
-    size_t off = 0U;
-
-    while (off < total) {
-      size_t n = serial_write(&s_log_tx, p + off, total - off);
-
-      if (n > 0U) {
-        off += n;
-      }
-
-      if (off < total) {
-        vTaskDelay(pdMS_TO_TICKS(50));
-      }
+    size_t n = serial_write(&s_log_tx, (const uint8_t *)data, (size_t)len);
+    if(n > 0U) {
+      s_tx_buf = data;
+      s_tx_ready = 0U;
+      return;
     }
   }
 
@@ -214,15 +223,21 @@ static void log_handle_write(const sys_msg_t *msg)
 
 int log_init(void)
 {
+  static const serial_cfg_t tx_cfg = {
+      .isr_fn = log_tx_isr,
+      .ctx = NULL,
+  };
+
   if (s_ready != 0U) {
     return LOG_OK;
   }
 
-  if (serial_register(LOG_SERIAL_TX, SERIAL_TYPE_TX, NULL, &s_log_tx) !=
+  if (serial_register(LOG_SERIAL_TX, SERIAL_TYPE_TX, &tx_cfg, &s_log_tx) !=
       SERIAL_OK) {
     return LOG_ERR_BUSY;
   }
 
+  s_tx_ready = 1U;
   s_ready = 1U;
   return LOG_OK;
 }
@@ -233,6 +248,12 @@ void log_uninit(void)
     return;
   }
 
+  if (s_tx_buf != NULL) {
+    vPortFree(s_tx_buf);
+    s_tx_buf = NULL;
+  }
+
+  s_tx_ready = 0U;
   s_ready = 0U;
   serial_unregister(&s_log_tx);
 }
@@ -243,10 +264,22 @@ void log_process(void)
 
   for (;;) {
     tm_wait_notif();
-    while (tm_recv(&msg) == TM_OK) {
-      if (msg.opcode == LOG_OPCODE_WRITE) {
-        log_handle_write(&msg);
-      }
+
+    if (s_tx_ready == 0U) {
+      continue;
+    }
+
+    if (s_tx_buf != NULL) {
+      vPortFree(s_tx_buf);
+      s_tx_buf = NULL;
+    }
+
+    if (tm_recv(&msg) != TM_OK) {
+      continue;
+    }
+
+    if (msg.opcode == LOG_OPCODE_WRITE) {
+      log_handle_write(&msg);
     }
   }
 }

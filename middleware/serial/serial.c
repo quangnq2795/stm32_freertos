@@ -6,6 +6,8 @@ static uint8_t s_hw_up[BSP_UART_COUNT];
 
 static serial_rx_isr_fn_t s_rx_isr[BSP_UART_COUNT];
 static void *s_rx_ctx[BSP_UART_COUNT];
+static serial_rx_isr_fn_t s_tx_isr[BSP_UART_COUNT];
+static void *s_tx_ctx[BSP_UART_COUNT];
 
 static void serial_uart_evt_cb(uart_id_t id, uart_event_t evt)
 {
@@ -13,8 +15,21 @@ static void serial_uart_evt_cb(uart_id_t id, uart_event_t evt)
     return;
   }
 
-  if (s_rx_isr[id] != NULL) {
+  if (evt == UART_EVENT_RX_AVAILABLE && s_rx_isr[id] != NULL) {
     s_rx_isr[id](id, evt, s_rx_ctx[id]);
+  }
+
+  if (evt == UART_EVENT_TX_EMPTY && s_tx_isr[id] != NULL) {
+    s_tx_isr[id](id, evt, s_tx_ctx[id]);
+  }
+}
+
+static void serial_update_uart_event(uart_id_t port)
+{
+  if (s_tx_claimed[port] != 0U || s_rx_claimed[port] != 0U) {
+    uart_register_event(port, serial_uart_evt_cb);
+  } else {
+    uart_register_event(port, NULL);
   }
 }
 
@@ -52,7 +67,7 @@ int serial_register(uart_id_t port, serial_type_t type, const serial_cfg_t *cfg,
     return SERIAL_ERR_PARAM;
   }
 
-  if (type == SERIAL_TYPE_RX && cfg == NULL) {
+  if (cfg == NULL) {
     return SERIAL_ERR_PARAM;
   }
 
@@ -66,12 +81,15 @@ int serial_register(uart_id_t port, serial_type_t type, const serial_cfg_t *cfg,
 
   if (type == SERIAL_TYPE_TX) {
     s_tx_claimed[port] = 1U;
+    s_tx_isr[port] = cfg->isr_fn;
+    s_tx_ctx[port] = cfg->ctx;
   } else {
     s_rx_claimed[port] = 1U;
     s_rx_isr[port] = cfg->isr_fn;
     s_rx_ctx[port] = cfg->ctx;
-    uart_register_event(port, serial_uart_evt_cb);
   }
+
+  serial_update_uart_event(port);
 
   out->port = port;
   out->type = type;
@@ -80,20 +98,25 @@ int serial_register(uart_id_t port, serial_type_t type, const serial_cfg_t *cfg,
 
 void serial_unregister(serial_t *handle)
 {
+  uart_id_t port;
+
   if (handle == NULL || handle->port >= BSP_UART_COUNT) {
     return;
   }
 
-  if (handle->type == SERIAL_TYPE_TX) {
-    s_tx_claimed[handle->port] = 0U;
-  } else {
-    uart_id_t port = handle->port;
+  port = handle->port;
 
+  if (handle->type == SERIAL_TYPE_TX) {
+    s_tx_claimed[port] = 0U;
+    s_tx_isr[port] = NULL;
+    s_tx_ctx[port] = NULL;
+  } else {
     s_rx_claimed[port] = 0U;
     s_rx_isr[port] = NULL;
     s_rx_ctx[port] = NULL;
-    uart_register_event(port, NULL);
   }
+
+  serial_update_uart_event(port);
 }
 
 size_t serial_write(const serial_t *handle, const uint8_t *buf, size_t len)
