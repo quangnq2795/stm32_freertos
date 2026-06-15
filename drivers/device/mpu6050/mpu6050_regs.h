@@ -1,0 +1,21 @@
+#pragma once
+
+#include <stdint.h>
+
+#define MPU6050_REG_SMPLRT_DIV      0x19U
+#define MPU6050_REG_CONFIG          0x1AU
+#define MPU6050_REG_GYRO_CONFIG     0x1BU
+#define MPU6050_REG_ACCEL_CONFIG    0x1CU
+#define MPU6050_REG_ACCEL_XOUT_H    0x3BU
+#define MPU6050_REG_TEMP_OUT_H      0x41U
+#define MPU6050_REG_GYRO_XOUT_H     0x43U
+#define MPU6050_REG_PWR_MGMT_1      0x6BU
+#define MPU6050_REG_WHO_AM_I        0x75U
+
+#define MPU6050_WHO_AM_I_VALUE      0x68U
+
+#define MPU6050_PWR_MGMT_1_CLKSEL_INTERNAL  0x00U
+#define MPU6050_PWR_MGMT_1_SLEEP            0x40U
+#define MPU6050_PWR_MGMT_1_DEVICE_RESET     0x80U
+
+#define MPU6050_RAW_BURST_LEN       14U

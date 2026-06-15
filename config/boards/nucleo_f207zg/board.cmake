@@ -17,6 +17,7 @@ set(BOARD_SOURCES
   ${CMAKE_SOURCE_DIR}/drivers/device/ir_rx/ir_rx_time.c
   ${CMAKE_SOURCE_DIR}/drivers/device/ir_rx/ir_rx_drv.c
   ${CMAKE_SOURCE_DIR}/drivers/device/ir_tx/ir_tx_drv.c
+  ${CMAKE_SOURCE_DIR}/drivers/device/mpu6050/mpu6050.c
   ${CMAKE_SOURCE_DIR}/middleware/ir/ir_rx_nec.c
   ${CMAKE_SOURCE_DIR}/middleware/ir/ir_rx.c
   ${CMAKE_SOURCE_DIR}/middleware/ir/ir_tx_nec.c
@@ -33,6 +34,7 @@ set(BOARD_INCLUDE_DIRS
   ${CMAKE_SOURCE_DIR}/drivers/device/led
   ${CMAKE_SOURCE_DIR}/drivers/device/ir_rx
   ${CMAKE_SOURCE_DIR}/drivers/device/ir_tx
+  ${CMAKE_SOURCE_DIR}/drivers/device/mpu6050
   ${CMAKE_SOURCE_DIR}/middleware/h_soft_timer
   ${CMAKE_SOURCE_DIR}/middleware/ir
   ${CMAKE_SOURCE_DIR}/middleware/serial

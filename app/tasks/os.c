@@ -7,7 +7,7 @@
 void task_cli_create(void);
 void task_ir_create(void);
 void task_log_create(void);
-void task_ir_create(void);
+void task_sensor_create(void);
 
 void os_init(void)
 {
@@ -16,6 +16,7 @@ void os_init(void)
   task_log_create();
   task_cli_create();
   task_ir_create();
+  task_sensor_create();
 }
 
 void os_start(void)

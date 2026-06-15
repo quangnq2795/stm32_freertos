@@ -34,6 +34,10 @@ typedef enum
 /* SYS_NODE_LOG opcodes (log middleware). */
 #define LOG_OPCODE_WRITE  0U /* u.buf: heap log line; task writes then vPortFree(data). */
 
+/* SYS_NODE_SENSOR opcodes (task_sensor). */
+#define SENSOR_OPCODE_I2C_DONE  0U /* arg.param1 = mpu6050_status_t */
+#define SENSOR_OPCODE_SAMPLE    1U
+
 /* IR_OPCODE_RX: arg.param1 = ir_rx_channel_id_t */
 /* IR_OPCODE_TX: arg.param1 = ir_tx channel, param2 = NEC address, param3 = NEC command,
  *               param4 = repeat (0 = full frame, non-zero = repeat code) */
