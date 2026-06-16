@@ -6,13 +6,10 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "app_cfg.h"
 #include "serial.h"
 #include "sys_msg.h"
 #include "taskmanager.h"
-
-#ifndef LOG_SERIAL_TX
-#define LOG_SERIAL_TX  SERIAL_PORT_2_TX
-#endif
 
 static serial_t s_log_tx;
 static uint8_t s_ready;

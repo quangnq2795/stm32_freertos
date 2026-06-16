@@ -5,18 +5,11 @@
 
 #include <string.h>
 
+#include "app_cfg.h"
 #include "log.h"
 #include "serial.h"
 #include "sys_msg.h"
 #include "taskmanager.h"
-
-#ifndef CLI_SERIAL_RX
-#define CLI_SERIAL_RX  SERIAL_PORT_2_RX
-#endif
-
-#ifndef CLI_UART_RX_CHUNK
-#define CLI_UART_RX_CHUNK  32U
-#endif
 
 #define CLI_LINE_MAX       64U
 #define CLI_CMD_TABLE_MAX  16U

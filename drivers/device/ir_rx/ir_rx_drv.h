@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #include "bsp_ir_rx_cfg.h"
-#include "stm32f2xx_hal.h"
+#include "stm32_hal.h"
 
 typedef uint8_t ir_rx_channel_id_t;
 
@@ -14,7 +14,6 @@ typedef struct
   uint16_t gpio_pin;
   IRQn_Type exti_irqn;
   uint8_t exti_irq_prio;
-  void (*gpio_clk_enable)(void);
   uint32_t idle_timeout_us;
   uint16_t pulse_ring_cap;
 } ir_rx_hw_desc_t;

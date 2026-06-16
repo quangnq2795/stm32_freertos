@@ -1,7 +1,8 @@
 #include "led.h"
 #include "bsp_led_cfg.h"
 
-#include "stm32f2xx_hal.h"
+#include "stm32_hal.h"
+#include "clk.h"
 
 static led_desc_t g_leds[LED_COUNT] = BSP_LED_DESCS;
 
@@ -11,9 +12,7 @@ void led_init(led_id_t id)
     return;
   }
 
-  if (g_leds[id].clk_enable != 0) {
-    g_leds[id].clk_enable();
-  }
+  clk_enable_gpio_port(g_leds[id].port);
 
   GPIO_InitTypeDef gpio = {0};
   gpio.Pin = g_leds[id].pin;

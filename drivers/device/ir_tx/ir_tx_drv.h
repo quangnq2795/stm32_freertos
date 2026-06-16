@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #include "bsp_ir_tx_cfg.h"
-#include "stm32f2xx_hal.h"
+#include "stm32_hal.h"
 
 typedef uint8_t ir_tx_channel_id_t;
 
@@ -18,8 +18,6 @@ typedef struct
   uint16_t tim_prescaler;
   uint16_t tim_period;
   uint16_t tim_pulse;
-  void (*gpio_clk_enable)(void);
-  void (*tim_clk_enable)(void);
 } ir_tx_hw_desc_t;
 
 typedef struct

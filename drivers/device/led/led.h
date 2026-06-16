@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "stm32f2xx_hal.h"
+#include "stm32_hal.h"
 #include "bsp_led_cfg.h"
 /* LED identifier (numeric ID: 0..BSP_LED_COUNT-1) */
 #define LED_COUNT BSP_LED_COUNT
@@ -19,7 +19,6 @@ typedef struct
   GPIO_TypeDef *port;
   uint16_t pin;
   led_state_t state;
-  void (*clk_enable)(void);
 } led_desc_t;
  
 void led_init(led_id_t id);

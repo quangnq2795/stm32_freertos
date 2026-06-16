@@ -3,9 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#ifndef LOG_LINE_MAX
-#define LOG_LINE_MAX  128U
-#endif
+#include "app_cfg.h"
 
 #define LOG_OK           0
 #define LOG_ERR_BUSY    -2

@@ -2,8 +2,9 @@
 
 #include "bsp_ir_tx_cfg.h"
 #include "h_soft_timer.h"
+#include "clk.h"
 
-#include "stm32f2xx_hal.h"
+#include "stm32_hal.h"
 
 #define IR_TX_DRV_MAX_SEGMENTS  80U
 
@@ -177,12 +178,8 @@ void ir_tx_drv_init(ir_tx_channel_id_t channel)
 
   hw = &s_hw_channels[channel].hw;
 
-  if (hw->tim_clk_enable != NULL) {
-    hw->tim_clk_enable();
-  }
-  if (hw->gpio_clk_enable != NULL) {
-    hw->gpio_clk_enable();
-  }
+  clk_enable_tim(hw->tim_pwm);
+  clk_enable_gpio_port(hw->gpio_port);
 
   GPIO_InitTypeDef gpio = {0};
   gpio.Pin = hw->gpio_pin;

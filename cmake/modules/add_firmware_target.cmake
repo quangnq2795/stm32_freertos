@@ -49,6 +49,9 @@ macro(_firmware_configure_board board_name)
   elseif(CORE_TYPE STREQUAL "cortex-m7")
     set(MCU_FLAGS -mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard)
     set(FREERTOS_PORT ARM_CM7)
+  elseif(CORE_TYPE STREQUAL "cortex-m55")
+    set(MCU_FLAGS -mcpu=cortex-m55 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -mcmse)
+    set(FREERTOS_PORT ARM_CM55_NTZ/non_secure)
   else()
     message(FATAL_ERROR "Unknown CORE_TYPE '${CORE_TYPE}' in ${_board_cmake}")
   endif()
@@ -97,6 +100,8 @@ function(_firmware_apply_app_includes target board_name)
     ${CMAKE_SOURCE_DIR}/drivers/device/ir_rx
     ${CMAKE_SOURCE_DIR}/drivers/device/ir_tx
     ${CMAKE_SOURCE_DIR}/config
+    ${CMAKE_SOURCE_DIR}/config/app/${board_name}
+    ${CMAKE_SOURCE_DIR}/config/app
     ${CMAKE_SOURCE_DIR}/config/boards/${board_name}
     ${CMAKE_SOURCE_DIR}/config/hal/${MCU_NAME}
     ${CMAKE_SOURCE_DIR}/config/freertos/${MCU_NAME}

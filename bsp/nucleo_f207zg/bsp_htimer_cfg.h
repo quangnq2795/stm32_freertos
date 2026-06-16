@@ -1,6 +1,6 @@
 #pragma once
 
-#include "stm32f2xx_hal.h"
+#include "stm32_hal.h"
 
 /* TIM2: 1 us free-running counter + one compare channel for middleware h_timer. */
 
@@ -9,3 +9,11 @@
 #define BSP_H_TIMER_IRQn          TIM2_IRQn
 #define BSP_H_TIMER_PRESCALER     59U
 #define BSP_H_TIMER_CHANNEL       TIM_CHANNEL_1
+
+#ifndef BSP_H_TIMER_IRQ_HANDLER
+#define BSP_H_TIMER_IRQ_HANDLER(TIMn) \
+  void TIMn##_IRQHandler(void) { h_timer_irq_handler(); }
+#endif
+
+#define BSP_H_TIMER_IRQ_HANDLERS \
+  BSP_H_TIMER_IRQ_HANDLER(TIM2)

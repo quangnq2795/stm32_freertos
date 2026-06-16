@@ -3,8 +3,9 @@
 #include "bsp_ir_rx_cfg.h"
 #include "h_soft_timer.h"
 #include "ir_rx_time.h"
+#include "clk.h"
 
-#include "stm32f2xx_hal.h"
+#include "stm32_hal.h"
 
 #include <string.h>
 
@@ -162,9 +163,7 @@ void ir_rx_drv_init(ir_rx_channel_id_t channel)
     ir_rx_time_init();
   }
 
-  if (hw->gpio_clk_enable != NULL) {
-    hw->gpio_clk_enable();
-  }
+  clk_enable_gpio_port(hw->gpio_port);
 
   GPIO_InitTypeDef gpio = {0};
   gpio.Pin = hw->gpio_pin;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "stm32f2xx_hal.h"
+#include "stm32_hal.h"
 
 /*===========================================================================*/
 /* Chọn nguồn đưa vào PLL → SYSCLK 120 MHz                                   */
