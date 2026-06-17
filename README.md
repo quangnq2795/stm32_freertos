@@ -53,6 +53,6 @@ bash scripts/build.sh
 BOARD=dk32n65 bash scripts/build.sh
 ```
 
-Artifacts: `build/firmware.elf`, `.hex`, `.bin`.
+Artifacts: `build/firmware_<board>.elf`, `.hex`, `.bin`, `.map` (e.g. `firmware_dk32n65.elf`).
 
 To add a board: create `configs/boards/<board>/board.cmake` (defines + `BOARD_SOURCES` / `BOARD_INCLUDE_DIRS`) and BSP cfg headers, plus `core/mcu/<mcu>/` and `configs/hal|freertos/<mcu>/` if needed.

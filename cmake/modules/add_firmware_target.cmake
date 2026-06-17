@@ -68,7 +68,7 @@ function(_firmware_apply_board target)
   endif()
 endfunction()
 
-function(_firmware_apply_toolchain target)
+function(_firmware_apply_toolchain target basename)
   target_compile_options(${target} PRIVATE
     ${MCU_FLAGS}
     -ffunction-sections -fdata-sections -Wall -Wextra
@@ -77,7 +77,7 @@ function(_firmware_apply_toolchain target)
     ${MCU_FLAGS}
     -T${LINKER_SCRIPT}
     -Wl,--gc-sections
-    -Wl,-Map=${CMAKE_BINARY_DIR}/firmware.map
+    -Wl,-Map=${CMAKE_BINARY_DIR}/${basename}.map
     --specs=nano.specs
   )
 endfunction()
@@ -111,10 +111,10 @@ function(_firmware_apply_app_includes target board_name)
   )
 endfunction()
 
-function(_firmware_add_hex_and_size target)
+function(_firmware_add_hex_and_size target basename)
   add_custom_command(TARGET ${target} POST_BUILD
-    COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${target}> ${CMAKE_BINARY_DIR}/firmware.hex
-    COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${target}> ${CMAKE_BINARY_DIR}/firmware.bin
+    COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${target}> ${CMAKE_BINARY_DIR}/${basename}.hex
+    COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${target}> ${CMAKE_BINARY_DIR}/${basename}.bin
     COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${target}>
   )
 endfunction()
@@ -122,14 +122,20 @@ endfunction()
 function(add_firmware_target board_name)
   _firmware_configure_board(${board_name})
 
+  set(_basename "firmware_${board_name}")
+
   add_executable(${FIRMWARE_TARGET} ${FIRMWARE_APP_SOURCES})
+  set_target_properties(${FIRMWARE_TARGET} PROPERTIES
+    OUTPUT_NAME "${_basename}"
+    SUFFIX ".elf"
+  )
 
   _firmware_apply_board(${FIRMWARE_TARGET})
-  _firmware_apply_toolchain(${FIRMWARE_TARGET})
+  _firmware_apply_toolchain(${FIRMWARE_TARGET} ${_basename})
   _firmware_apply_app_includes(${FIRMWARE_TARGET} ${board_name})
 
   target_compile_definitions(${FIRMWARE_TARGET} PRIVATE USE_HAL_DRIVER ${DEVICE_DEFINE})
 
   add_stm32cube_sources(${FIRMWARE_TARGET})
-  _firmware_add_hex_and_size(${FIRMWARE_TARGET})
+  _firmware_add_hex_and_size(${FIRMWARE_TARGET} ${_basename})
 endfunction()

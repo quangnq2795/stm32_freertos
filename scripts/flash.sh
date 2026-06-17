@@ -1,1 +1,1 @@
-st-flash --reset write ../build/firmware.bin 0x08000000
+st-flash --reset write ../build/firmware_nucleo_f207zg.bin 0x08000000
