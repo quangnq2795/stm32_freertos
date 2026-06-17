@@ -13,8 +13,13 @@
 
 static serial_t s_log_tx;
 static uint8_t s_ready;
-static volatile uint8_t s_tx_ready;
-static void *s_tx_buf;
+
+/* Current line being drained into the TX ring (NULL = none). The ring copies
+ * the bytes, so the buffer is freed as soon as all of it has been queued; only
+ * a ring-full backpressure leaves a remainder ([s_tx_off, s_tx_len)). */
+static char *s_tx_buf;
+static size_t s_tx_off;
+static size_t s_tx_len;
 
 static void log_tx_isr(uart_id_t port, uart_event_t evt, void *ctx)
 {
@@ -27,7 +32,7 @@ static void log_tx_isr(uart_id_t port, uart_event_t evt, void *ctx)
     return;
   }
 
-  s_tx_ready = 1U;
+  /* Ring drained: wake the task to push any remainder / next line. */
   tm_noti_from_isr(SYS_NODE_LOG, &hpw);
   portYIELD_FROM_ISR(hpw);
 }
@@ -192,29 +197,25 @@ static void log_post(char *data, size_t len)
   }
 }
 
-static void log_handle_write(const sys_msg_t *msg)
+/* Push as much of the pending line as the TX ring accepts. Frees the buffer
+ * once fully queued; a remainder stays for the next wake (TX_EMPTY / new msg). */
+static void log_pump_pending(void)
 {
-  void *data;
-  uint32_t len;
+  size_t n;
 
-  if (msg == NULL) {
+  if (s_tx_buf == NULL) {
     return;
   }
 
-  data = msg->u.buf.data;
-  len = msg->u.buf.lenght;
+  n = serial_write(&s_log_tx, (const uint8_t *)(s_tx_buf + s_tx_off),
+                   s_tx_len - s_tx_off);
+  s_tx_off += n;
 
-  if (data != NULL && len > 0U) {
-    size_t n = serial_write(&s_log_tx, (const uint8_t *)data, (size_t)len);
-    if(n > 0U) {
-      s_tx_buf = data;
-      s_tx_ready = 0U;
-      return;
-    }
-  }
-
-  if (data != NULL) {
-    vPortFree(data);
+  if (s_tx_off >= s_tx_len) {
+    vPortFree(s_tx_buf);
+    s_tx_buf = NULL;
+    s_tx_off = 0U;
+    s_tx_len = 0U;
   }
 }
 
@@ -234,7 +235,6 @@ int log_init(void)
     return LOG_ERR_BUSY;
   }
 
-  s_tx_ready = 1U;
   s_ready = 1U;
   return LOG_OK;
 }
@@ -248,9 +248,10 @@ void log_uninit(void)
   if (s_tx_buf != NULL) {
     vPortFree(s_tx_buf);
     s_tx_buf = NULL;
+    s_tx_off = 0U;
+    s_tx_len = 0U;
   }
 
-  s_tx_ready = 0U;
   s_ready = 0U;
   serial_unregister(&s_log_tx);
 }
@@ -262,21 +263,25 @@ void log_process(void)
   for (;;) {
     tm_wait_notif();
 
-    if (s_tx_ready == 0U) {
-      continue;
-    }
-
+    /* Flush any remainder first; if the ring is still full, wait for the next
+     * wake (TX_EMPTY or a new message) before taking another line. */
+    log_pump_pending();
     if (s_tx_buf != NULL) {
-      vPortFree(s_tx_buf);
-      s_tx_buf = NULL;
+      continue;
     }
 
     if (tm_recv(&msg) != TM_OK) {
       continue;
     }
 
-    if (msg.opcode == LOG_OPCODE_WRITE) {
-      log_handle_write(&msg);
+    if (msg.opcode == LOG_OPCODE_WRITE && msg.u.buf.data != NULL &&
+        msg.u.buf.lenght > 0U) {
+      s_tx_buf = (char *)msg.u.buf.data;
+      s_tx_off = 0U;
+      s_tx_len = (size_t)msg.u.buf.lenght;
+      log_pump_pending();
+    } else if (msg.u.buf.data != NULL) {
+      vPortFree(msg.u.buf.data);
     }
   }
 }

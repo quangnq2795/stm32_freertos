@@ -11,6 +11,11 @@ static ringbuf_u8_t g_rx_rb[BSP_UART_COUNT];
 static uint8_t g_rx_storage[BSP_UART_COUNT][UART_RX_RING_SIZE];
 static uint8_t g_rx_tmp[BSP_UART_COUNT][UART_RX_IT_CHUNK];
 
+static ringbuf_u8_t g_tx_rb[BSP_UART_COUNT];
+static uint8_t g_tx_storage[BSP_UART_COUNT][UART_TX_RING_SIZE];
+static uint8_t g_tx_tmp[BSP_UART_COUNT][UART_TX_IT_CHUNK];
+static volatile uint8_t s_tx_active[BSP_UART_COUNT];
+
 static uint8_t s_inited[BSP_UART_COUNT];
 
 static uart_id_t uart_id_from_huart(const UART_HandleTypeDef *huart)
@@ -40,6 +45,28 @@ static void uart_rx_kick(uart_id_t id)
   (void)HAL_UARTEx_ReceiveToIdle_IT(&g_uarts[id].huart,
                                     g_rx_tmp[id],
                                     UART_RX_IT_CHUNK);
+}
+
+/*
+ * Pop the next chunk from the TX ring and start an interrupt transfer.
+ * Sole consumer of g_tx_rb: runs from uart_write under a critical section
+ * (only when idle) or from the TxCplt ISR (while active) — never both at once.
+ * When the ring is empty it clears s_tx_active and emits TX_EMPTY.
+ */
+static void uart_tx_kick(uart_id_t id)
+{
+  size_t n = ringbuf_pop(&g_tx_rb[id], g_tx_tmp[id], UART_TX_IT_CHUNK);
+
+  if (n == 0U) {
+    s_tx_active[id] = 0U;
+    uart_notify(id, UART_EVENT_TX_EMPTY);
+    return;
+  }
+
+  if (HAL_UART_Transmit_IT(&g_uarts[id].huart, g_tx_tmp[id], (uint16_t)n)
+      != HAL_OK) {
+    s_tx_active[id] = 0U;
+  }
 }
 
 void uart_irq_handler(USART_TypeDef *instance)
@@ -74,6 +101,8 @@ void uart_init(uart_id_t id)
   }
 
   ringbuf_init(&g_rx_rb[id], g_rx_storage[id], UART_RX_RING_SIZE);
+  ringbuf_init(&g_tx_rb[id], g_tx_storage[id], UART_TX_RING_SIZE);
+  s_tx_active[id] = 0U;
 
   if (uart_hw_init(d, hu) != 0) {
     return;
@@ -102,26 +131,33 @@ size_t uart_read(uart_id_t id, uint8_t *out, size_t max_len)
 
 size_t uart_write(uart_id_t id, const uint8_t *buf, size_t len)
 {
-  UART_HandleTypeDef *hu;
+  size_t pushed;
+  uint32_t primask;
 
-  if (!uart_id_valid(id) || buf == NULL || len == 0U) {
+  if (!uart_id_valid(id) || s_inited[id] == 0U || buf == NULL || len == 0U) {
     return 0U;
   }
 
-  hu = &g_uarts[id].huart;
-  if (hu->gState != HAL_UART_STATE_READY) {
+  pushed = ringbuf_push(&g_tx_rb[id], buf, len);
+  if (pushed == 0U) {
     return 0U;
   }
 
-  if (len > (size_t)UINT16_MAX) {
-    len = (size_t)UINT16_MAX;
+  /* Start draining only when idle. The check-and-set excludes the TxCplt ISR
+   * so the ring keeps a single active consumer. */
+  primask = __get_PRIMASK();
+  __disable_irq();
+  if (s_tx_active[id] == 0U) {
+    s_tx_active[id] = 1U;
+    if (primask == 0U) {
+      __enable_irq();
+    }
+    uart_tx_kick(id);
+  } else if (primask == 0U) {
+    __enable_irq();
   }
 
-  if (HAL_UART_Transmit_IT(hu, (uint8_t *)buf, (uint16_t)len) != HAL_OK) {
-    return 0U;
-  }
-
-  return len;
+  return pushed;
 }
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
@@ -132,7 +168,8 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
     return;
   }
 
-  uart_notify(id, UART_EVENT_TX_EMPTY);
+  /* Continue draining the ring; emits TX_EMPTY once it is empty. */
+  uart_tx_kick(id);
 }
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
@@ -172,8 +209,9 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 
   uart_rx_kick(id);
 
-  if (huart->gState == HAL_UART_STATE_READY) {
-    uart_notify(id, UART_EVENT_TX_EMPTY);
+  /* If an error left the transmitter idle with bytes still queued, resume. */
+  if (s_tx_active[id] != 0U && huart->gState == HAL_UART_STATE_READY) {
+    uart_tx_kick(id);
   }
 }
 
