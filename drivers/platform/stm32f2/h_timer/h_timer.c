@@ -23,7 +23,8 @@ void h_timer_init(void)
   BSP_H_TIMER_CLK_ENABLE();
 
   s_htim.Instance = BSP_H_TIMER_INSTANCE;
-  s_htim.Init.Prescaler = BSP_H_TIMER_PRESCALER;
+  /* Prescaler cho 1 tick = 1 us, tính từ clock thực tế của timer (xem BSP). */
+  s_htim.Init.Prescaler = (uint32_t)(BSP_H_TIMER_KERNEL_HZ / BSP_H_TIMER_TICK_HZ) - 1U;
   s_htim.Init.CounterMode = TIM_COUNTERMODE_UP;
   s_htim.Init.Period = 0xFFFFFFFFU;
   s_htim.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -65,7 +66,7 @@ static void h_timer_oc_ensure(void)
 void h_timer_schedule(uint32_t deadline_us)
 {
   h_timer_oc_ensure();
-  __HAL_TIM_CLEAR_FLAG(&s_htim, TIM_FLAG_CC1);
+  __HAL_TIM_CLEAR_FLAG(&s_htim, BSP_H_TIMER_CC_FLAG);
   __HAL_TIM_SET_COMPARE(&s_htim, BSP_H_TIMER_CHANNEL, deadline_us);
   (void)HAL_TIM_OC_Start_IT(&s_htim, BSP_H_TIMER_CHANNEL);
 }
