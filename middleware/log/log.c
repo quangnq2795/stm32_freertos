@@ -2,6 +2,7 @@
 
 #include <stdarg.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -14,12 +15,8 @@
 static serial_t s_log_tx;
 static uint8_t s_ready;
 
-/* Current line being drained into the TX ring (NULL = none). The ring copies
- * the bytes, so the buffer is freed as soon as all of it has been queued; only
- * a ring-full backpressure leaves a remainder ([s_tx_off, s_tx_len)). */
-static char *s_tx_buf;
-static size_t s_tx_off;
-static size_t s_tx_len;
+static uint8_t s_pending[LOG_LINE_MAX + 2U];
+static size_t s_pending_len;
 
 static void log_tx_isr(uart_id_t port, uart_event_t evt, void *ctx)
 {
@@ -197,26 +194,40 @@ static void log_post(char *data, size_t len)
   }
 }
 
-/* Push as much of the pending line as the TX ring accepts. Frees the buffer
- * once fully queued; a remainder stays for the next wake (TX_EMPTY / new msg). */
-static void log_pump_pending(void)
+/* Send a full log line, then free its heap buffer. Whatever the TX ring cannot
+ * accept right now is copied into the pending buffer for a later wake.
+ * Returns the number of bytes left pending (0 = the line was fully sent). */
+static size_t log_write(void *data, size_t len)
 {
-  size_t n;
+  size_t written = serial_write(&s_log_tx, (const uint8_t *)data, len);
+  size_t remain = len - written;
 
-  if (s_tx_buf == NULL) {
-    return;
+  if (remain > sizeof(s_pending)) {
+    remain = sizeof(s_pending);
   }
 
-  n = serial_write(&s_log_tx, (const uint8_t *)(s_tx_buf + s_tx_off),
-                   s_tx_len - s_tx_off);
-  s_tx_off += n;
-
-  if (s_tx_off >= s_tx_len) {
-    vPortFree(s_tx_buf);
-    s_tx_buf = NULL;
-    s_tx_off = 0U;
-    s_tx_len = 0U;
+  if (remain > 0U) {
+    memcpy(s_pending, (const uint8_t *)data + written, remain);
   }
+  s_pending_len = remain;
+
+  vPortFree(data);
+  return remain;
+}
+
+/* Push the pending bytes into the TX ring; keep (compact to the front) whatever
+ * the ring still cannot accept. Returns the number of bytes left pending. */
+static size_t log_write_pending(void)
+{
+  size_t written = serial_write(&s_log_tx, s_pending, s_pending_len);
+  size_t remain = s_pending_len - written;
+
+  if (remain > 0U) {
+    memmove(s_pending, s_pending + written, remain);
+  }
+  s_pending_len = remain;
+
+  return remain;
 }
 
 int log_init(void)
@@ -245,13 +256,7 @@ void log_uninit(void)
     return;
   }
 
-  if (s_tx_buf != NULL) {
-    vPortFree(s_tx_buf);
-    s_tx_buf = NULL;
-    s_tx_off = 0U;
-    s_tx_len = 0U;
-  }
-
+  s_pending_len = 0U;
   s_ready = 0U;
   serial_unregister(&s_log_tx);
 }
@@ -263,25 +268,26 @@ void log_process(void)
   for (;;) {
     tm_wait_notif();
 
-    /* Flush any remainder first; if the ring is still full, wait for the next
-     * wake (TX_EMPTY or a new message) before taking another line. */
-    log_pump_pending();
-    if (s_tx_buf != NULL) {
+    /* Finish a backpressured remainder before taking new lines. */
+    if (s_pending_len != 0U && log_write_pending() > 0U) {
       continue;
     }
 
-    if (tm_recv(&msg) != TM_OK) {
-      continue;
-    }
+    /* Pending is empty: drain the queue until the ring backpressures. One wake
+     * must service all queued lines because notifications coalesce. */
+    while (tm_recv(&msg) == TM_OK) {
+      if (msg.opcode != LOG_OPCODE_WRITE || msg.u.buf.data == NULL) {
+        continue;
+      }
 
-    if (msg.opcode == LOG_OPCODE_WRITE && msg.u.buf.data != NULL &&
-        msg.u.buf.lenght > 0U) {
-      s_tx_buf = (char *)msg.u.buf.data;
-      s_tx_off = 0U;
-      s_tx_len = (size_t)msg.u.buf.lenght;
-      log_pump_pending();
-    } else if (msg.u.buf.data != NULL) {
-      vPortFree(msg.u.buf.data);
+      if (msg.u.buf.lenght == 0U) {
+        vPortFree(msg.u.buf.data);
+        continue;
+      }
+
+      if (log_write(msg.u.buf.data, (size_t)msg.u.buf.lenght) > 0U) {
+        break; /* ring full: resume on next wake (TX_EMPTY / new message) */
+      }
     }
   }
 }
