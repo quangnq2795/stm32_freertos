@@ -1,8 +1,7 @@
 #include "led.h"
 #include "bsp_led_cfg.h"
 
-#include "stm32_hal.h"
-#include "clk.h"
+#include "gpio.h"
 
 static led_desc_t g_leds[LED_COUNT] = BSP_LED_DESCS;
 
@@ -12,22 +11,10 @@ void led_init(led_id_t id)
     return;
   }
 
-  clk_enable_gpio_port(g_leds[id].port);
-
-  GPIO_InitTypeDef gpio = {0};
-  gpio.Pin = g_leds[id].pin;
-  gpio.Mode = GPIO_MODE_OUTPUT_PP;
-  gpio.Pull = GPIO_NOPULL;
-  gpio.Speed = GPIO_SPEED_FREQ_LOW;
-
-  HAL_GPIO_Init(g_leds[id].port, &gpio);
-
-  /* Apply initial state to GPIO. */
-  if (g_leds[id].state == led_state_on) {
-    HAL_GPIO_WritePin(g_leds[id].port, g_leds[id].pin, GPIO_PIN_SET);
-  } else {
-    HAL_GPIO_WritePin(g_leds[id].port, g_leds[id].pin, GPIO_PIN_RESET);
-  }
+  gpio_config_output(g_leds[id].port, g_leds[id].pin, GPIO_OUT_PUSH_PULL,
+                     GPIO_NOPULL,
+                     (g_leds[id].state == led_state_on) ? GPIO_LEVEL_HIGH
+                                                        : GPIO_LEVEL_LOW);
 }
 
 void led_on(led_id_t id)
@@ -37,7 +24,7 @@ void led_on(led_id_t id)
   }
 
   g_leds[id].state = led_state_on;
-  HAL_GPIO_WritePin(g_leds[id].port, g_leds[id].pin, GPIO_PIN_SET);
+  gpio_set(g_leds[id].port, g_leds[id].pin);
 }
 
 void led_off(led_id_t id)
@@ -47,7 +34,7 @@ void led_off(led_id_t id)
   }
 
   g_leds[id].state = led_state_off;
-  HAL_GPIO_WritePin(g_leds[id].port, g_leds[id].pin, GPIO_PIN_RESET);
+  gpio_clear(g_leds[id].port, g_leds[id].pin);
 }
 
 void led_toggle(led_id_t id)
@@ -62,4 +49,3 @@ void led_toggle(led_id_t id)
     led_on(id);
   }
 }
-

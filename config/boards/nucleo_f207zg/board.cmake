@@ -9,6 +9,7 @@ set(BOARD_SOURCES
   ${CMAKE_SOURCE_DIR}/drivers/platform/stm32f2/driver.c
   ${CMAKE_SOURCE_DIR}/drivers/hal_override.c
   ${CMAKE_SOURCE_DIR}/drivers/platform/stm32f2/clk/clk.c
+  ${CMAKE_SOURCE_DIR}/drivers/platform/stm32f2/gpio/gpio.c
   ${CMAKE_SOURCE_DIR}/drivers/platform/stm32f2/uart/uart.c
   ${CMAKE_SOURCE_DIR}/drivers/platform/stm32f2/i2c/i2c.c
   ${CMAKE_SOURCE_DIR}/drivers/platform/stm32f2/h_timer/h_timer.c
@@ -29,6 +30,7 @@ set(BOARD_INCLUDE_DIRS
   ${CMAKE_SOURCE_DIR}/drivers
   ${CMAKE_SOURCE_DIR}/drivers/platform/stm32f2
   ${CMAKE_SOURCE_DIR}/drivers/platform/stm32f2/clk
+  ${CMAKE_SOURCE_DIR}/drivers/platform/stm32f2/gpio
   ${CMAKE_SOURCE_DIR}/drivers/platform/stm32f2/uart
   ${CMAKE_SOURCE_DIR}/drivers/platform/stm32f2/i2c
   ${CMAKE_SOURCE_DIR}/drivers/platform/stm32f2/h_timer

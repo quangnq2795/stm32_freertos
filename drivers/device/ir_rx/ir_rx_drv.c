@@ -3,7 +3,7 @@
 #include "bsp_ir_rx_cfg.h"
 #include "h_soft_timer.h"
 #include "ir_rx_time.h"
-#include "clk.h"
+#include "gpio.h"
 
 #include "stm32_hal.h"
 
@@ -21,16 +21,6 @@ typedef struct
 
 static ir_rx_hw_channel_t s_hw_channels[BSP_IR_RX_COUNT] = BSP_IR_RX_DESCS;
 static ir_rx_channel_runtime_t s_channel_rt[BSP_IR_RX_COUNT];
-
-static ir_rx_channel_id_t ir_rx_drv_channel_from_pin(uint16_t gpio_pin)
-{
-  for (ir_rx_channel_id_t ch = 0U; ch < BSP_IR_RX_COUNT; ++ch) {
-    if (gpio_pin == s_hw_channels[ch].hw.gpio_pin) {
-      return ch;
-    }
-  }
-  return BSP_IR_RX_COUNT;
-}
 
 static void ir_rx_drv_idle_timer_disarm(ir_rx_channel_id_t channel)
 {
@@ -139,7 +129,14 @@ void ir_rx_drv_exti_irq(ir_rx_channel_id_t channel)
     return;
   }
 
-  HAL_GPIO_EXTI_IRQHandler(s_hw_channels[channel].hw.gpio_pin);
+  gpio_exti_irq_handler(s_hw_channels[channel].hw.gpio_pin);
+}
+
+static void ir_rx_drv_exti_cb(uint16_t pin, void *ctx)
+{
+  ir_rx_channel_id_t channel = (ir_rx_channel_id_t)(uintptr_t)ctx;
+
+  ir_rx_drv_on_gpio_edge(channel, pin);
 }
 
 void ir_rx_drv_init(ir_rx_channel_id_t channel)
@@ -163,17 +160,9 @@ void ir_rx_drv_init(ir_rx_channel_id_t channel)
     ir_rx_time_init();
   }
 
-  clk_enable_gpio_port(hw->gpio_port);
-
-  GPIO_InitTypeDef gpio = {0};
-  gpio.Pin = hw->gpio_pin;
-  gpio.Mode = GPIO_MODE_IT_RISING_FALLING;
-  gpio.Pull = GPIO_PULLUP;
-  gpio.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(hw->gpio_port, &gpio);
-
-  HAL_NVIC_SetPriority(hw->exti_irqn, hw->exti_irq_prio, 0);
-  HAL_NVIC_EnableIRQ(hw->exti_irqn);
+  (void)gpio_config_input_exti(hw->gpio_port, hw->gpio_pin, GPIO_EXTI_EDGE_BOTH,
+                               GPIO_PULLUP, hw->exti_irqn, hw->exti_irq_prio,
+                               ir_rx_drv_exti_cb, (void *)(uintptr_t)channel);
 
   s_channel_rt[channel].last_edge_tick_us = ir_rx_time_us();
 }
@@ -238,15 +227,6 @@ void ir_rx_drv_flush_buffer(ir_rx_channel_id_t channel)
   s_channel_rt[channel].pulse_count = 0U;
   s_channel_rt[channel].is_new_frame = 1;
   ir_rx_drv_idle_timer_disarm(channel);
-}
-
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
-  ir_rx_channel_id_t channel = ir_rx_drv_channel_from_pin(GPIO_Pin);
-
-  if (channel < BSP_IR_RX_COUNT) {
-    ir_rx_drv_on_gpio_edge(channel, GPIO_Pin);
-  }
 }
 
 BSP_IR_RX_IRQ_HANDLERS
