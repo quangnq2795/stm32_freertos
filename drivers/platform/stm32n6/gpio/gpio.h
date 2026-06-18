@@ -66,9 +66,3 @@ int gpio_config_input_exti(GPIO_TypeDef *port, uint16_t pin,
                            gpio_exti_edge_t edge, uint32_t pull,
                            IRQn_Type irqn, uint8_t prio, gpio_exti_cb_t cb,
                            void *ctx);
-
-/*
- * Service an EXTI line from its vector. Call from the EXTIn_IRQHandler stub(s)
- * with the owned pin(s); it clears the line and dispatches the callback.
- */
-void gpio_exti_irq_handler(uint16_t pin);

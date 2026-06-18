@@ -30,12 +30,6 @@
     },                                                                      \
   }
 
-#ifndef BSP_IR_RX_IRQ_HANDLER_0
-#define BSP_IR_RX_IRQ_HANDLER_0                                           \
-  void EXTI0_IRQHandler(void)                                             \
-  {                                                                       \
-    ir_rx_drv_exti_irq(0U);                                               \
-  }
-#endif
-
-#define BSP_IR_RX_IRQ_HANDLERS  BSP_IR_RX_IRQ_HANDLER_0
+/* EXTI vector handlers are owned by the gpio platform driver (gpio.c); this BSP
+ * only selects the line via BSP_IR_RX1_EXTI_IRQn and registers a callback in
+ * ir_rx_drv_init() through gpio_config_input_exti(). */

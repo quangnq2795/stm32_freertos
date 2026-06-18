@@ -123,15 +123,6 @@ void ir_rx_drv_on_gpio_edge(ir_rx_channel_id_t channel, uint16_t gpio_pin)
   ir_rx_drv_idle_timer_arm(channel);
 }
 
-void ir_rx_drv_exti_irq(ir_rx_channel_id_t channel)
-{
-  if (channel >= BSP_IR_RX_COUNT) {
-    return;
-  }
-
-  gpio_exti_irq_handler(s_hw_channels[channel].hw.gpio_pin);
-}
-
 static void ir_rx_drv_exti_cb(uint16_t pin, void *ctx)
 {
   ir_rx_channel_id_t channel = (ir_rx_channel_id_t)(uintptr_t)ctx;
@@ -228,5 +219,3 @@ void ir_rx_drv_flush_buffer(ir_rx_channel_id_t channel)
   s_channel_rt[channel].is_new_frame = 1;
   ir_rx_drv_idle_timer_disarm(channel);
 }
-
-BSP_IR_RX_IRQ_HANDLERS

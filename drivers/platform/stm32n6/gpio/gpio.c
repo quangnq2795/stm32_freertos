@@ -131,11 +131,6 @@ int gpio_config_input_exti(GPIO_TypeDef *port, uint16_t pin,
   return 0;
 }
 
-void gpio_exti_irq_handler(uint16_t pin)
-{
-  HAL_GPIO_EXTI_IRQHandler(pin);
-}
-
 static void gpio_exti_dispatch(uint16_t pin)
 {
   int line = gpio_exti_line_from_pin(pin);
@@ -163,3 +158,25 @@ void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin)
 {
   gpio_exti_dispatch(GPIO_Pin);
 }
+
+/* ---- EXTI interrupt vectors ----------------------------------------------
+ * The gpio module owns all EXTI vectors (overriding the weak startup symbols)
+ * and funnels each into the shared per-line dispatch. A module only registers a
+ * callback via gpio_config_input_exti(); it never defines a vector itself.
+ * On STM32N6 every EXTI line has its own vector (EXTI0..EXTI15). */
+void EXTI0_IRQHandler(void)  { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0); }
+void EXTI1_IRQHandler(void)  { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_1); }
+void EXTI2_IRQHandler(void)  { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_2); }
+void EXTI3_IRQHandler(void)  { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_3); }
+void EXTI4_IRQHandler(void)  { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_4); }
+void EXTI5_IRQHandler(void)  { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_5); }
+void EXTI6_IRQHandler(void)  { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_6); }
+void EXTI7_IRQHandler(void)  { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_7); }
+void EXTI8_IRQHandler(void)  { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_8); }
+void EXTI9_IRQHandler(void)  { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_9); }
+void EXTI10_IRQHandler(void) { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_10); }
+void EXTI11_IRQHandler(void) { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_11); }
+void EXTI12_IRQHandler(void) { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_12); }
+void EXTI13_IRQHandler(void) { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_13); }
+void EXTI14_IRQHandler(void) { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_14); }
+void EXTI15_IRQHandler(void) { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_15); }

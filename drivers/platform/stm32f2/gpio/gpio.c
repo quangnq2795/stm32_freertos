@@ -131,11 +131,6 @@ int gpio_config_input_exti(GPIO_TypeDef *port, uint16_t pin,
   return 0;
 }
 
-void gpio_exti_irq_handler(uint16_t pin)
-{
-  HAL_GPIO_EXTI_IRQHandler(pin);
-}
-
 static void gpio_exti_dispatch(uint16_t pin)
 {
   int line = gpio_exti_line_from_pin(pin);
@@ -153,4 +148,31 @@ static void gpio_exti_dispatch(uint16_t pin)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
   gpio_exti_dispatch(GPIO_Pin);
+}
+
+/* ---- EXTI interrupt vectors ----------------------------------------------
+ * The gpio module owns all EXTI vectors (overriding the weak startup symbols)
+ * and funnels each into the shared per-line dispatch. A module only registers a
+ * callback via gpio_config_input_exti(); it never defines a vector itself.
+ * On STM32F2, lines 0..4 have their own vector; lines 5..9 and 10..15 share
+ * one vector each (service every line in the group — HAL_GPIO_EXTI_IRQHandler
+ * acts only on the line whose pending flag is set). */
+void EXTI0_IRQHandler(void) { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0); }
+void EXTI1_IRQHandler(void) { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_1); }
+void EXTI2_IRQHandler(void) { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_2); }
+void EXTI3_IRQHandler(void) { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_3); }
+void EXTI4_IRQHandler(void) { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_4); }
+
+void EXTI9_5_IRQHandler(void)
+{
+  for (uint8_t line = 5U; line <= 9U; ++line) {
+    HAL_GPIO_EXTI_IRQHandler((uint16_t)(1U << line));
+  }
+}
+
+void EXTI15_10_IRQHandler(void)
+{
+  for (uint8_t line = 10U; line <= 15U; ++line) {
+    HAL_GPIO_EXTI_IRQHandler((uint16_t)(1U << line));
+  }
 }

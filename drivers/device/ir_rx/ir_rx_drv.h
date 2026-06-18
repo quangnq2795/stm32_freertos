@@ -42,5 +42,4 @@ size_t ir_rx_drv_read_buffered_pulses(ir_rx_channel_id_t channel, uint16_t *out,
                                       size_t max_count);
 void ir_rx_drv_flush_buffer(ir_rx_channel_id_t channel);
 
-void ir_rx_drv_exti_irq(ir_rx_channel_id_t channel);
 void ir_rx_drv_on_gpio_edge(ir_rx_channel_id_t channel, uint16_t gpio_pin);
