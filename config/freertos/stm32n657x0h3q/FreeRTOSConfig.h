@@ -29,7 +29,7 @@
 #define configENABLE_FPU                          1
 #define configENABLE_MPU                          0
 #define configENABLE_TRUSTZONE                    0
-#define configRUN_FREERTOS_SECURE_ONLY            0
+#define configRUN_FREERTOS_SECURE_ONLY            1
 
 #define configPRIO_BITS                         4
 #define configLIBRARY_LOWEST_INTERRUPT_PRIORITY 15
