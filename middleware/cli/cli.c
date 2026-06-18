@@ -14,6 +14,11 @@
 #define CLI_LINE_MAX       64U
 #define CLI_CMD_TABLE_MAX  16U
 
+/* RX read chunk size (middleware default; an app may override in app_cfg.h). */
+#ifndef CLI_UART_RX_CHUNK
+#define CLI_UART_RX_CHUNK  32U
+#endif
+
 typedef struct
 {
   const char *name;

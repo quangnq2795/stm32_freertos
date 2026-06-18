@@ -6,5 +6,3 @@
 
 #define CLI_SERIAL_RX     SERIAL_PORT_2_RX
 #define LOG_SERIAL_TX     SERIAL_PORT_2_TX
-#define CLI_UART_RX_CHUNK 32U
-#define LOG_LINE_MAX      128U

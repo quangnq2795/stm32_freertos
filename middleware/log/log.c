@@ -12,6 +12,12 @@
 #include "sys_msg.h"
 #include "taskmanager.h"
 
+/* Max formatted log line length (middleware default; an app may override it
+ * in app_cfg.h). */
+#ifndef LOG_LINE_MAX
+#define LOG_LINE_MAX 128U
+#endif
+
 static serial_t s_log_tx;
 static uint8_t s_ready;
 

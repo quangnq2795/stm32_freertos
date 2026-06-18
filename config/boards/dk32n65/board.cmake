@@ -9,7 +9,6 @@ set(CORE_MCU_DIR "${CMAKE_SOURCE_DIR}/core/${MCU_NAME}")
 set(BOARD_SOURCES
   ${CMAKE_SOURCE_DIR}/drivers/platform/stm32n6/driver.c
   ${CMAKE_SOURCE_DIR}/drivers/hal_override.c
-  ${CMAKE_SOURCE_DIR}/third_party/stm32cube/bsp/stm32n6570-dk/stm32n6570_discovery.c
   ${CMAKE_SOURCE_DIR}/drivers/platform/stm32n6/clk/clk.c
   ${CMAKE_SOURCE_DIR}/drivers/platform/stm32n6/gpio/gpio.c
   ${CMAKE_SOURCE_DIR}/drivers/platform/stm32n6/uart/uart.c
@@ -45,5 +44,4 @@ set(BOARD_INCLUDE_DIRS
   ${CMAKE_SOURCE_DIR}/middleware/h_soft_timer
   ${CMAKE_SOURCE_DIR}/middleware/ir
   ${CMAKE_SOURCE_DIR}/middleware/serial
-  ${CMAKE_SOURCE_DIR}/third_party/stm32cube/bsp/stm32n6570-dk
 )
