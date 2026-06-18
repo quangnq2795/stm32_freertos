@@ -100,8 +100,6 @@ function(_firmware_apply_app_includes target board_name)
     ${CMAKE_SOURCE_DIR}/drivers/device/ir_rx
     ${CMAKE_SOURCE_DIR}/drivers/device/ir_tx
     ${CMAKE_SOURCE_DIR}/config
-    ${CMAKE_SOURCE_DIR}/config/app/${board_name}
-    ${CMAKE_SOURCE_DIR}/config/app
     ${CMAKE_SOURCE_DIR}/config/boards/${board_name}
     ${CMAKE_SOURCE_DIR}/config/hal/${MCU_NAME}
     ${CMAKE_SOURCE_DIR}/config/freertos/${MCU_NAME}

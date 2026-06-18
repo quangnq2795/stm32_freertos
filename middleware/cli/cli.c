@@ -5,7 +5,7 @@
 
 #include <string.h>
 
-#include "app_cfg.h"
+#include "bsp_common_cfg.h"
 #include "log.h"
 #include "serial.h"
 #include "sys_msg.h"
@@ -14,7 +14,7 @@
 #define CLI_LINE_MAX       64U
 #define CLI_CMD_TABLE_MAX  16U
 
-/* RX read chunk size (middleware default; an app may override in app_cfg.h). */
+/* RX read chunk size (middleware default; a board may override in bsp_common_cfg.h). */
 #ifndef CLI_UART_RX_CHUNK
 #define CLI_UART_RX_CHUNK  32U
 #endif
@@ -129,7 +129,7 @@ int cli_init(void)
     return CLI_OK;
   }
 
-  if (serial_register(CLI_SERIAL_RX, SERIAL_TYPE_RX, &rx_cfg, &s_cli_rx) !=
+  if (serial_register(CLI_PORT, SERIAL_TYPE_RX, &rx_cfg, &s_cli_rx) !=
       SERIAL_OK) {
     return CLI_ERR_BUSY;
   }

@@ -7,13 +7,13 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "app_cfg.h"
+#include "bsp_common_cfg.h"
 #include "serial.h"
 #include "sys_msg.h"
 #include "taskmanager.h"
 
-/* Max formatted log line length (middleware default; an app may override it
- * in app_cfg.h). */
+/* Max formatted log line length (middleware default; a board may override it
+ * in bsp_common_cfg.h). */
 #ifndef LOG_LINE_MAX
 #define LOG_LINE_MAX 128U
 #endif
@@ -247,7 +247,7 @@ int log_init(void)
     return LOG_OK;
   }
 
-  if (serial_register(LOG_SERIAL_TX, SERIAL_TYPE_TX, &tx_cfg, &s_log_tx) !=
+  if (serial_register(LOG_PORT, SERIAL_TYPE_TX, &tx_cfg, &s_log_tx) !=
       SERIAL_OK) {
     return LOG_ERR_BUSY;
   }

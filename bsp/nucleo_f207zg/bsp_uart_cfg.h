@@ -4,6 +4,15 @@
 
 #define BSP_UART_COUNT 2U
 
+/* Logical UART ports on this board = index into BSP_UART_DESCS (uart_id_t).
+ * Use these names (not raw 0/1) when selecting a port, e.g. in bsp_common_cfg.h.
+ * Keep BSP_UART_COUNT as a macro: serial_port.h evaluates it in #if. */
+typedef enum
+{
+  BSP_UART_USART1 = 0,
+  BSP_UART_USART3 = 1,
+} bsp_uart_port_t;
+
 /* BSP_UART3 = ST-Link Virtual COM (USART3 on PD8/PD9). */
 
 /* Map generic UART indices to this board's physical UARTs. */
@@ -41,7 +50,7 @@
 /* Initializer for generic UART driver. */
 #define BSP_UART_DESCS                                                     \
   {                                                                          \
-    [0] = {                                                                 \
+    [BSP_UART_USART1] = {                                                   \
       .instance = BSP_UART1_INSTANCE,                                      \
       .baudrate = BSP_UART1_BAUDRATE,                                      \
       .parity = BSP_UART1_PARITY,                                          \
@@ -53,7 +62,7 @@
       .rx_af = BSP_UART1_RX_AF,                                            \
       .irqn = BSP_UART1_IRQN,                                              \
     },                                                                      \
-    [1] = {                                                                 \
+    [BSP_UART_USART3] = {                                                   \
       .instance = BSP_UART3_INSTANCE,                                      \
       .baudrate = BSP_UART3_BAUDRATE,                                      \
       .parity = BSP_UART3_PARITY,                                          \

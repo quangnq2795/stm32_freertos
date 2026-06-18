@@ -3,8 +3,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "app_cfg.h"
-
 #define LOG_OK           0
 #define LOG_ERR_BUSY    -2
 

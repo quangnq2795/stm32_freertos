@@ -4,7 +4,15 @@
 
 #define BSP_UART_COUNT 1U
 
-/* ST-Link Virtual COM on STM32N6570-DK: USART1 PE5/PE6, odd parity. */
+/* Logical UART ports on this board = index into BSP_UART_DESCS (uart_id_t).
+ * Use these names (not raw 0/1) when selecting a port, e.g. in bsp_common_cfg.h.
+ * Keep BSP_UART_COUNT as a macro: serial_port.h evaluates it in #if. */
+typedef enum
+{
+  BSP_UART_USART1 = 0,
+} bsp_uart_port_t;
+
+/* ST-Link Virtual COM on STM32N6570-DK: USART1 PE5/PE6, 8N1. */
 
 #define BSP_UART1_INSTANCE USART1
 #define BSP_UART1_BAUDRATE 115200U
@@ -27,7 +35,7 @@
 
 #define BSP_UART_DESCS                                                     \
   {                                                                          \
-    [0] = {                                                                 \
+    [BSP_UART_USART1] = {                                                   \
       .instance = BSP_UART1_INSTANCE,                                      \
       .baudrate = BSP_UART1_BAUDRATE,                                      \
       .parity = BSP_UART1_PARITY,                                          \
